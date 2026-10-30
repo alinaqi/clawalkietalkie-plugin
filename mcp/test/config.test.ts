@@ -11,7 +11,8 @@ describe('auth', () => {
     const dir = freshDir()
     saveAuth(dir, { token: 't', email: 'a@x.io' })
     expect(loadAuth(dir)).toEqual({ token: 't', email: 'a@x.io' })
-    expect(statSync(join(dir, 'auth.json')).mode & 0o777).toBe(0o600)
+    // Windows has no POSIX modes; there the file is private through the ACL on the profile folder.
+    if (process.platform !== 'win32') expect(statSync(join(dir, 'auth.json')).mode & 0o777).toBe(0o600)
   })
 
   it('forgets the token', () => {
