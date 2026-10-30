@@ -1,7 +1,7 @@
 // The action's inputs, as GitHub hands them to a step: INPUT_<NAME> environment variables.
 export interface Inputs { key: string, to: string, text: string, server: string, waitSeconds: number }
 
-const DEFAULT_SERVER = 'https://clawalkietalkie-relay.onrender.com'
+const DEFAULT_SERVER = 'https://api.clawalkietalkie.com'
 const MAX_WAIT_SECONDS = 3600
 
 const required = (env: Record<string, string | undefined>, name: string): string => {

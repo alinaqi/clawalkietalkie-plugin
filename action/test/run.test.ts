@@ -8,7 +8,7 @@ const inputs = { key: 'cwk_secret', to: 'cx:fixer@acme', text: 'Build 41 failed'
 describe('readInputs', () => {
   it('reads the INPUT_ variables GitHub sets', () => {
     const env = { INPUT_KEY: 'cwk_x', INPUT_TO: 'cx:fixer@acme', INPUT_TEXT: 'hi', INPUT_SERVER: '', INPUT_WAIT_SECONDS: '30' }
-    expect(readInputs(env)).toEqual({ key: 'cwk_x', to: 'cx:fixer@acme', text: 'hi', server: 'https://clawalkietalkie-relay.onrender.com', waitSeconds: 30 })
+    expect(readInputs(env)).toEqual({ key: 'cwk_x', to: 'cx:fixer@acme', text: 'hi', server: 'https://api.clawalkietalkie.com', waitSeconds: 30 })
   })
 
   it('refuses a missing key, address or text, and a key that is not a team key', () => {

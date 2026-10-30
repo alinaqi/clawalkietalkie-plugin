@@ -2,7 +2,7 @@
 import { randomUUID as randomUUID3 } from "crypto";
 
 // src/inputs.ts
-var DEFAULT_SERVER = "https://clawalkietalkie-relay.onrender.com";
+var DEFAULT_SERVER = "https://api.clawalkietalkie.com";
 var MAX_WAIT_SECONDS = 3600;
 var required = (env, name) => {
   const value = env[`INPUT_${name.toUpperCase()}`]?.trim();

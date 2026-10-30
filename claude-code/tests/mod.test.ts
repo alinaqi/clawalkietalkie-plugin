@@ -115,7 +115,7 @@ test('/talkie with no arguments shows help', async ($, on) => {
 test('talks to the hosted relay unless serverUrl says otherwise', async ($, on) => {
   setup(on)
   await start($)
-  expect(await talkie($, 'status')).toMatch(/Relay: https:\/\/clawalkietalkie-relay\.onrender\.com/)
+  expect(await talkie($, 'status')).toMatch(/Relay: https:\/\/api\.clawalkietalkie\.com/)
 })
 
 test('a message the person sends by hand always starts a fresh chain', async ($, on) => {

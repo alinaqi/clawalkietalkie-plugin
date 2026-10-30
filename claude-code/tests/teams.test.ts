@@ -44,7 +44,7 @@ test('/talkie teams lists teams, invites and the board', async ($, on) => {
   const text = await talkie($, 'teams')
   expect(text).toMatch(/acme \(Acme\) · admin/)
   expect(text).toMatch(/inv-1 · Beta \(beta\) · member · from eve@beta\.io/)
-  expect(text).toContain('https://clawalkietalkie-relay.onrender.com/board')
+  expect(text).toContain('https://api.clawalkietalkie.com/board')
 })
 
 test('/talkie join accepts an invite', async ($, on) => {

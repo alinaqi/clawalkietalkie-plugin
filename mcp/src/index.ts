@@ -4,7 +4,7 @@ import { createAgent } from './agent.ts'
 import { defaultDir } from './config.ts'
 import { createServer } from './server.ts'
 
-const DEFAULT_SERVER = 'https://clawalkietalkie-relay.onrender.com'
+const DEFAULT_SERVER = 'https://api.clawalkietalkie.com'
 
 const flag = (name: string): string | undefined => {
   const at = process.argv.indexOf(`--${name}`)

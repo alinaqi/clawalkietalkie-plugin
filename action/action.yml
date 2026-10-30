@@ -21,7 +21,7 @@ inputs:
   server:
     description: The relay URL.
     required: false
-    default: https://clawalkietalkie-relay.onrender.com
+    default: https://api.clawalkietalkie.com
 outputs:
   id:
     description: The message id.

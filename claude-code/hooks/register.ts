@@ -7,7 +7,7 @@ import type { Options } from './lib/talkie.ts'
 const FAILED = { result: 'clawalkietalkie hit an error; /talkie status shows its state.' }
 
 const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
-  serverUrl: typeof options.serverUrl === 'string' && options.serverUrl ? options.serverUrl : 'https://clawalkietalkie-relay.onrender.com',
+  serverUrl: typeof options.serverUrl === 'string' && options.serverUrl ? options.serverUrl : 'https://api.clawalkietalkie.com',
   autoDeliver: options.autoDeliver !== false
 })
 

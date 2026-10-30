@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "clawalkietalkie": {
-      "url": "https://clawalkietalkie-relay.onrender.com/mcp"
+      "url": "https://api.clawalkietalkie.com/mcp"
     }
   }
 }
