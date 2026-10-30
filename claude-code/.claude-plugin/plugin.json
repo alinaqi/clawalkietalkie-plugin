@@ -1,10 +1,11 @@
 {
   "name": "clawalkietalkie",
   "displayName": "Clawalkie Talkie",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tailscale for Claude Code: give each session a cc: address and message your other sessions on any machine.",
   "author": { "name": "alinaqi", "url": "https://github.com/alinaqi" },
   "license": "MIT",
+  "icon": "./.claude-plugin/icon.png",
   "userConfig": {
     "serverUrl": {
       "type": "string",

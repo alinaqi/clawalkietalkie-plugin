@@ -1,7 +1,7 @@
 // The inbox loop: long-poll, deliver, ack, poll again, each step a $.clock.after timer.
 
 import type { EngineInterface } from 'claude-code'
-import { frameIncoming } from './frame.ts'
+import { readMessage } from './hops.ts'
 import type { InboxMessage } from './relay.ts'
 import { relayOf, saveAuth, showStatus, type Talkie } from './talkie.ts'
 
@@ -22,12 +22,15 @@ function deliver ($: EngineInterface, t: Talkie, messages: readonly InboxMessage
     t.seen.add(message.id)
     const hop = message.hop ?? 0
     void $.ui.toast(`📻 ${message.from}: ${message.text.slice(0, 80)}`)
+    if (message.delivery === 'context') {
+      t.context.push(message)
+      continue
+    }
     if (!t.options.autoDeliver || hop > MAX_PROMPT_HOP) {
       t.held.push(message)
       continue
     }
-    t.turnHop = hop + 1
-    void $.prompt.submit({ text: frameIncoming(message, t.identity.name) }).catch(() => {})
+    void $.prompt.submit({ text: readMessage(t, message) }).catch(() => {})
   }
 }
 

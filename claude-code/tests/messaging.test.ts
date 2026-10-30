@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { SEND, SIGNED_IN, WHO, setup, start, talkie } from './harness.ts'
+import { SEND, SIGNED_IN, WHO, setup, start, talkie, typed } from './harness.ts'
 
 test('an incoming message is submitted as a framed prompt and acked', async ($, on) => {
   const { relay, seen, clock } = setup(on, SIGNED_IN)
@@ -132,4 +132,29 @@ test('an unknown prefix is not an address', async ($, on) => {
   setup(on, SIGNED_IN)
   await start($)
   expect((await $.tool.call({ tool: SEND, to: 'zz:review-bot', text: 'x' })).result).toMatch(/not an address/)
+})
+
+test('replies keep each sender\'s hop: a mixed batch from two senders', async ($, on) => {
+  const { relay, clock } = setup(on, SIGNED_IN)
+  relay.deliver('cc:happy-cat', 'status?', 0)
+  relay.deliver('cc:api@acme', 'all green', 1, { fromPerson: 'bob@acme.io' })
+  await start($)
+  await clock.advance(1000)
+  await $.tool.call({ tool: SEND, to: 'cc:happy-cat', text: 'green' })
+  await $.tool.call({ tool: SEND, to: 'cc:api@acme', text: 'thanks' })
+  await $.tool.call({ tool: SEND, to: 'cc:happy-cat', text: 'one more thing' })
+  await $.tool.call({ tool: SEND, to: 'cc:other', text: 'fresh' })
+  expect(relay.find('POST', '/v1/messages').map((c) => [c.body?.to, c.body?.hop])).toEqual([
+    ['cc:happy-cat', 1], ['cc:api@acme', 2], ['cc:happy-cat', 0], ['cc:other', 0]
+  ])
+})
+
+test('the person typing in between does not zero a pending reply\'s hop', async ($, on) => {
+  const { relay, clock } = setup(on, SIGNED_IN)
+  relay.deliver('cc:happy-cat', 'status?', 0)
+  await start($)
+  await clock.advance(1000)
+  await typed($, 'and look at the logs too')
+  await $.tool.call({ tool: SEND, to: 'happy-cat', text: 'green' })
+  expect(relay.find('POST', '/v1/messages')[0]?.body).toMatchObject({ hop: 1 })
 })

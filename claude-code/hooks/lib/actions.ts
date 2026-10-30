@@ -1,17 +1,15 @@
 // What /talkie and the tools do, each answering the text to show.
 
 import type { EngineInterface } from 'claude-code'
-import { formatAddress, parseAddress, parseTarget, suggestName, type Target } from './address.ts'
-import { formatWho } from './frame.ts'
+import { formatAddress, parseAddress } from './address.ts'
 import { startListening, stopListening } from './listener.ts'
 import type { Result } from './relay.ts'
+import { describeWho, parseStatus, statusText } from './who.ts'
 import { freshName, relayOf, renameTo, saveAuth, savePending, showStatus, type Talkie } from './talkie.ts'
 
-export interface Outgoing { to: string, text: string, hop: number }
+export const SIGN_IN = 'Not signed in to clawalkietalkie. Run /talkie login <email> first.'
 
-const SIGN_IN = 'Not signed in to clawalkietalkie. Run /talkie login <email> first.'
-
-const why = (res: Extract<Result<unknown>, { ok: false }>): string =>
+export const why = (res: Extract<Result<unknown>, { ok: false }>): string =>
   res.status === 0 ? 'the relay server is unreachable' : `the relay answered ${res.status} ${res.error}`
 
 function claim ($: EngineInterface, t: Talkie, name: string) {
@@ -34,33 +32,19 @@ export async function connect ($: EngineInterface, t: Talkie): Promise<string> {
   return `This session is ${res.value}.`
 }
 
-export async function sendMessage ($: EngineInterface, t: Talkie, out: Outgoing): Promise<string> {
-  if (!t.auth) return SIGN_IN
-  const target = parseTarget(out.to)
-  if (!target) return `"${out.to}" is not an address (like cc:happy-dog or cx:review-bot).`
-  const { name: from, instanceId } = t.identity
-  const to = target.kind ? formatAddress(target.name, target.kind) : target.name
-  const res = await relayOf($, t).send({ from, instanceId, to, text: out.text, hop: out.hop })
-  const shown = res.ok ? res.value.to ?? formatAddress(target.name, target.kind ?? 'cc') : ''
-  if (res.ok) return `Sent to ${shown}${res.value.online ? '.' : ' (offline now; delivered when it is back, within 24 h).'}`
-  if (res.status === 404) return unknown($, t, target)
-  if (res.status === 429) return 'Not sent: this session sent 20 messages in the last minute; wait a moment.'
-  return `Not sent: ${why(res)}.`
-}
-
-async function unknown ($: EngineInterface, t: Talkie, target: Target): Promise<string> {
-  const listed = await relayOf($, t).list()
-  const byName = new Map(listed.ok ? listed.value.map((s) => [s.address.slice(3), s.address] as const) : [])
-  const close = suggestName(target.name, [...byName.keys()])
-  const hint = close ? ` Did you mean ${byName.get(close)}?` : ' /talkie who lists them.'
-  return `No session is called ${formatAddress(target.name, target.kind ?? 'cc')}.${hint}`
-}
-
 export async function who ($: EngineInterface, t: Talkie): Promise<string> {
   if (!t.auth) return SIGN_IN
-  const res = await relayOf($, t).list()
-  if (!res.ok) return `Could not list sessions: ${why(res)}.`
-  return formatWho(res.value, { self: t.identity.name, now: await $.clock.now() })
+  const res = await describeWho(relayOf($, t), { self: t.identity.name, now: await $.clock.now() })
+  return res.ok ? res.value : `Could not list sessions: ${why(res)}.`
+}
+
+// What this session's agent is doing, for who and the board.
+export async function setStatus ($: EngineInterface, t: Talkie, input: Record<string, unknown>): Promise<string> {
+  if (!t.auth) return SIGN_IN
+  const status = parseStatus(input)
+  if (typeof status === 'string') return `Status not set: ${status}`
+  const res = await relayOf($, t).setStatus(t.identity.name, { instanceId: t.identity.instanceId, ...status })
+  return res.ok ? `Status set: ${statusText(status)}.` : `Status not set: ${why(res)}.`
 }
 
 export async function rename ($: EngineInterface, t: Talkie, input: string): Promise<string> {
@@ -93,12 +77,17 @@ export async function verify ($: EngineInterface, t: Talkie, code: string): Prom
   return `Signed in as ${res.value.email}. ${await connect($, t)}`
 }
 
+// Signs out here even when the relay cannot revoke the token, and says which happened.
 export async function logout ($: EngineInterface, t: Talkie): Promise<string> {
-  if (t.auth) {
-    await relayOf($, t).unclaim(t.identity.name, t.identity.instanceId)
-    await relayOf($, t).revoke()
-  }
+  const res = t.auth ? await revoke($, t) : { ok: true as const, value: {} }
   await saveAuth($, t, undefined)
   stopListening($, t)
-  return 'Signed out; this device\'s token is revoked.'
+  if (res.ok) return 'Signed out; this device\'s token is revoked.'
+  return `Signed out on this device, but its token could not be revoked: ${why(res)}. ` +
+    'It is deleted here, and stays valid on the relay until it expires.'
+}
+
+async function revoke ($: EngineInterface, t: Talkie): Promise<Result<object>> {
+  await relayOf($, t).unclaim(t.identity.name, t.identity.instanceId)
+  return relayOf($, t).revoke()
 }

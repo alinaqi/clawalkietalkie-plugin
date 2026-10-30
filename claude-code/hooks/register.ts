@@ -1,13 +1,9 @@
-import type { EngineInterface, Register } from 'claude-code'
-import { connect, sendMessage, who } from './lib/actions.ts'
-import { runTalkie } from './lib/commands.ts'
-import { stopListening } from './lib/listener.ts'
-import { loadTalkie, relayOf, showStatus, type Options, type Talkie } from './lib/talkie.ts'
-import { folderName } from './lib/frame.ts'
-import { SEND_TOOL, WHO_TOOL } from './lib/tools.ts'
+import type { Register } from 'claude-code'
+import { setStatus, who } from './lib/actions.ts'
+import { NOT_READY, onPrompt, onSession, type Box, type On } from './lib/lifecycle.ts'
+import { sendMessage } from './lib/send.ts'
+import type { Options } from './lib/talkie.ts'
 
-const NOT_READY = 'clawalkietalkie is still starting; try again in a moment.'
-const KEEPS_NAME = new Set(['clear', 'resume'])
 const FAILED = { result: 'clawalkietalkie hit an error; /talkie status shows its state.' }
 
 const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
@@ -15,53 +11,20 @@ const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
   autoDeliver: options.autoDeliver !== false
 })
 
-
-async function boot ($: EngineInterface, options: Options, cwd: string): Promise<Talkie> {
-  await $.command.register({
-    name: 'talkie',
-    description: 'Message your other Claude Code sessions by cc: address',
-    argumentHint: '[login|verify|who|send|name|on|off|status|logout]'
-  })
-  await $.tool.register(SEND_TOOL)
-  await $.tool.register(WHO_TOOL)
-  const talkie = await loadTalkie($, options, folderName(cwd))
-  if (talkie.auth) await connect($, talkie)
-  else showStatus($, talkie)
-  return talkie
+function onTools (on: On, box: Box): void {
+  on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
+    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), isAnswer: true }
+    return { result: box.talkie ? await sendMessage($, box.talkie, out) : NOT_READY }
+  }).catch(() => FAILED)
+  on('tool.call', { tool: 'mcp__clawalkietalkie__who' }, async ($) =>
+    ({ result: box.talkie ? await who($, box.talkie) : NOT_READY })).catch(() => FAILED)
+  on('tool.call', { tool: 'mcp__clawalkietalkie__set_status' }, async ($, e) =>
+    ({ result: box.talkie ? await setStatus($, box.talkie, { ...e }) : NOT_READY })).catch(() => FAILED)
 }
 
 export const register: Register = (on, rawOptions) => {
-  const options = readOptions(rawOptions)
-  let talkie: Talkie | undefined
-
-  on('session.start', async ($, e, next) => {
-    const started = await next(e)
-    talkie = await boot($, options, e.cwd)
-    return started
-  })
-
-  // A prompt the person (not this plugin) submits starts a fresh chain of messages.
-  on('prompt.submit', ($, e, next) => {
-    if (talkie && e.origin.kind !== 'plugin') talkie.turnHop = 0
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  on('command.run', { command: 'talkie' }, async ($, e) =>
-    ({ text: talkie ? await runTalkie($, talkie, e.args) : NOT_READY }))
-
-  on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
-    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), hop: talkie?.turnHop ?? 0 }
-    return { result: talkie ? await sendMessage($, talkie, out) : NOT_READY }
-  }).catch(() => FAILED)
-
-  on('tool.call', { tool: 'mcp__clawalkietalkie__who' }, async ($) =>
-    ({ result: talkie ? await who($, talkie) : NOT_READY })).catch(() => FAILED)
-
-  on('session.end', async ($, e, next) => {
-    if (talkie?.auth && !KEEPS_NAME.has(e.reason)) {
-      stopListening($, talkie)
-      await relayOf($, talkie).unclaim(talkie.identity.name, talkie.identity.instanceId)
-    }
-    return next(e)
-  })
+  const box: Box = { options: readOptions(rawOptions) }
+  onSession(on, box)
+  onPrompt(on, box)
+  onTools(on, box)
 }

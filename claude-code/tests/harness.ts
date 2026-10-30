@@ -4,6 +4,7 @@ import { createFakeRelay } from './fake-relay.ts'
 
 export const SEND = 'mcp__clawalkietalkie__send'
 export const WHO = 'mcp__clawalkietalkie__who'
+export const SET_STATUS = 'mcp__clawalkietalkie__set_status'
 type On = Parameters<TestBody>[1]
 
 const TYPED = { origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } } as const
@@ -12,7 +13,7 @@ export const SIGNED_IN = { auth: { token: 'tok-1', email: 'a@x.io' }, 'session:s
 
 export const setup = (on: On, store: Record<string, unknown> = {}) => {
   const relay = createFakeRelay()
-  const seen = { prompts: [] as string[], statuses: [] as Array<string | undefined>, toasts: [] as string[], tools: [] as string[], commands: [] as string[] }
+  const seen = { prompts: [] as string[], contexts: [] as string[][], statuses: [] as Array<string | undefined>, toasts: [] as string[], tools: [] as string[], commands: [] as string[] }
   const clock = mock.clock(on)
   mock.store(on, store)
   on('session.start', () => ({ cwd: '/work/web' }))
@@ -21,7 +22,7 @@ export const setup = (on: On, store: Record<string, unknown> = {}) => {
   on('http.fetch', ($, e) => ({ value: relay.fetch(e.url, e.init) }))
   on('command.register', ($, e) => { seen.commands.push(e.name); return { value: { command: e.name } } })
   on('tool.register', ($, e) => { seen.tools.push(e.name); return { value: { tool: `mcp__clawalkietalkie__${e.name}` } } })
-  on('prompt.submit', ($, e) => { seen.prompts.push(e.text); return { text: e.text } })
+  on('prompt.submit', ($, e) => { seen.prompts.push(e.text); seen.contexts.push([...(e.context ?? [])]); return { text: e.text } })
   on('ui.status', ($, e) => { seen.statuses.push(e.text); return { value: undefined } })
   on('ui.toast', ($, e) => { seen.toasts.push(e.text); return { value: undefined } })
   return { relay, seen, clock }
@@ -29,3 +30,4 @@ export const setup = (on: On, store: Record<string, unknown> = {}) => {
 
 export const start = ($: Engine) => $.session.start({ cwd: '/work/web', surface: 'terminal', isInteractive: true })
 export const talkie = async ($: Engine, args: string) => (await $.command.run({ command: 'talkie', args, ...TYPED })).text ?? ''
+export const typed = ($: Engine, text: string) => $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false })

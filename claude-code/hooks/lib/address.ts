@@ -1,4 +1,4 @@
-// The address grammar, <kind>:<name>, as the relay speaks it. The MCP server bundles this file too.
+// The address grammar, [<kind>:]<name>[@<team>], as the relay speaks it. The MCP server bundles this file too.
 
 const NAME = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/
 
@@ -31,22 +31,34 @@ export const isKind = (value: string): value is Kind => Object.hasOwn(KINDS, val
 
 export const isValidName = (name: string): boolean => NAME.test(name)
 
-export interface Target { kind: Kind | null, name: string }
+export interface Target { kind: Kind | null, name: string, team: string | null }
 
-// Accepts "cx:Review-Bot", "review-bot" or " review-bot "; kind is null when no prefix is given.
+// Accepts "cx:Review-Bot", "review-bot", " review-bot " or "cx:review@acme"; kind and team are
+// null when not given.
 export const parseTarget = (input: string): Target | null => {
-  const trimmed = input.trim().toLowerCase()
-  const match = /^([a-z]{2}):(.*)$/.exec(trimmed)
+  const [local = '', team = null, ...rest] = input.trim().toLowerCase().split('@')
+  if (rest.length > 0 || (team !== null && !isValidName(team))) return null
+  const match = /^([a-z]{2}):(.*)$/.exec(local)
   if (match && !isKind(match[1]!)) return null
   const kind = match ? match[1] as Kind : null
-  const name = match ? match[2]! : trimmed
-  return isValidName(name) ? { kind, name } : null
+  const name = match ? match[2]! : local
+  return isValidName(name) ? { kind, name, team } : null
 }
 
-// The name alone, whatever the prefix; null when not an address.
-export const parseAddress = (input: string): string | null => parseTarget(input)?.name ?? null
+// The name alone, whatever the prefix, for a personal address; null for a team one or a non-address.
+export const parseAddress = (input: string): string | null => {
+  const target = parseTarget(input)
+  return target && target.team === null ? target.name : null
+}
 
-export const formatAddress = (name: string, kind: Kind = 'cc'): string => `${kind}:${name}`
+export const formatAddress = (name: string, kind: Kind = 'cc', team?: string | null): string =>
+  team ? `${kind}:${name}@${team}` : `${kind}:${name}`
+
+// A target as it goes to the relay: a missing kind stays missing, so the relay resolves it.
+export const formatTarget = (target: Target): string => {
+  if (target.kind) return formatAddress(target.name, target.kind, target.team)
+  return target.team ? `${target.name}@${target.team}` : target.name
+}
 
 // `random` returns a float in [0, 1), like Math.random.
 export const generateName = (random: () => number): string => {

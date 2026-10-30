@@ -28,8 +28,11 @@ describe('the MCP server', () => {
   it('offers the messaging tools and says how to use them', async () => {
     const { client } = await connect('codex-mcp-client')
     const names = (await client.listTools()).tools.map((t) => t.name).sort()
-    expect(names).toEqual(['inbox', 'login', 'rename', 'send', 'status', 'verify', 'who'])
+    expect(names).toEqual(['inbox', 'login', 'rename', 'send', 'set_status', 'status', 'verify', 'who'])
+    expect(names.filter((n) => /approv|deny|decide|allow/.test(n))).toEqual([])
     expect(client.getInstructions()).toMatch(/inbox/)
+    expect(client.getInstructions()).toMatch(/cc:api@acme/)
+    expect(client.getInstructions()).toMatch(/set_status/)
   })
 
   it('registers under the kind the client name implies', async () => {
@@ -46,6 +49,13 @@ describe('the MCP server', () => {
     const { client } = await connect('cursor-vscode')
     const result = await client.callTool({ name: 'send', arguments: { to: 'cc:happy-cat', text: 'hi' } })
     expect(text(result)).toMatch(/Sent to cc:happy-cat/)
+  })
+
+  it('sets the status through the set_status tool', async () => {
+    const { client, relay } = await connect('codex-mcp-client')
+    const result = await client.callTool({ name: 'set_status', arguments: { state: 'working', task: 'review PR 12' } })
+    expect(text(result)).toMatch(/Status set: working: review PR 12/)
+    expect(relay.find('PUT', '/v1/sessions/')).toHaveLength(2)
   })
 
   it('reads the inbox through the inbox tool', async () => {

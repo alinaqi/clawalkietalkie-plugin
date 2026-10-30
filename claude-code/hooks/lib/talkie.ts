@@ -18,11 +18,13 @@ export interface Talkie {
   isListening: boolean
   pendingEmail?: string
   held: InboxMessage[]
+  // Context-only messages, added beside the person's next prompt rather than starting a turn.
+  context: InboxMessage[]
   seen: Set<string>
   timer?: { cancel: () => void }
   backoffMs: number
-  // The hop a send from the current turn goes at: 0 after the person types, one past what it answers.
-  turnHop: number
+  // The hop of the last message read from each sender, by replyKey, until the model answers it.
+  hops: Map<string, number>
 }
 
 const AUTH_KEY = 'auth'
@@ -45,7 +47,8 @@ export async function loadTalkie ($: EngineInterface, options: Options, cwd: str
   if (!stored) await $.store.set(identityKey(sessionId), identity)
   const auth = await $.store.get(AUTH_KEY) as Auth | undefined
   const pendingEmail = await $.store.get(PENDING_KEY) as string | undefined
-  return { options, sessionId, cwd, auth, identity, pendingEmail, isListening: false, held: [], seen: new Set(), backoffMs: 0, turnHop: 0 }
+  const fresh = { isListening: false, held: [], context: [], seen: new Set<string>(), backoffMs: 0, hops: new Map<string, number>() }
+  return { options, sessionId, cwd, auth, identity, pendingEmail, ...fresh }
 }
 
 export async function saveAuth ($: EngineInterface, t: Talkie, auth: Auth | undefined): Promise<void> {

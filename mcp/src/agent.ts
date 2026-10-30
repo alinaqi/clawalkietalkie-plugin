@@ -1,6 +1,6 @@
 // One agent on the network, as the MCP tools and the poll loop see it.
 import type { Kind } from '../../claude-code/hooks/lib/address.ts'
-import { inbox, pollOnce, send, who } from './mail.ts'
+import { inbox, pollOnce, send, setStatus, who } from './mail.ts'
 import { login, rename, start, status, verify } from './session.ts'
 import { createState, type AgentDeps } from './state.ts'
 
@@ -20,6 +20,7 @@ export const createAgent = (deps: AgentDeps) => {
     send: (to: string, text: string) => send(s, to, text),
     inbox: () => inbox(s),
     who: () => who(s),
+    setStatus: (input: Record<string, unknown>) => setStatus(s, input),
     pollOnce: (waitSeconds = 0) => pollOnce(s, waitSeconds),
     isSignedIn: () => s.auth !== undefined,
     pending: () => s.buffer.length

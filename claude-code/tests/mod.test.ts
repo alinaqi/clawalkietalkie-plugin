@@ -5,7 +5,7 @@ test('registers /talkie and the send and who tools, and asks to sign in', async 
   const { seen } = setup(on)
   await start($)
   expect(seen.commands).toEqual(['talkie'])
-  expect(seen.tools.sort()).toEqual(['send', 'who'])
+  expect(seen.tools.sort()).toEqual(['send', 'set_status', 'who'])
   expect(seen.statuses.at(-1)).toBe('📻 /talkie login')
 })
 
@@ -52,10 +52,21 @@ test('a 401 while polling signs out and stops listening', async ($, on) => {
 test('logout revokes the token and forgets it', async ($, on) => {
   const { relay } = setup(on, SIGNED_IN)
   await start($)
-  expect(await talkie($, 'logout')).toMatch(/Signed out/)
+  expect(await talkie($, 'logout')).toMatch(/Signed out; this device's token is revoked/)
   expect(relay.find('DELETE', '/v1/auth/token')).toHaveLength(1)
   expect(await talkie($, 'status')).toMatch(/Account: not signed in/)
   expect((await $.tool.call({ tool: SEND, to: 'cc:happy-cat', text: 'x' })).result).toMatch(/\/talkie login/)
+})
+
+test('logout that cannot revoke says so, and still signs out here', async ($, on) => {
+  const { relay } = setup(on, SIGNED_IN)
+  await start($)
+  relay.override('DELETE /v1/auth/token', { status: 500, body: { error: 'internal' } })
+  const text = await talkie($, 'logout')
+  expect(text).not.toMatch(/is revoked/)
+  expect(text).toMatch(/Signed out on this device, but its token could not be revoked/)
+  expect(text).toMatch(/the relay answered 500 internal[\s\S]*valid on the relay until it expires/)
+  expect(await talkie($, 'status')).toMatch(/Account: not signed in/)
 })
 
 test('a stored sign-in survives into the next session', async ($, on) => {
