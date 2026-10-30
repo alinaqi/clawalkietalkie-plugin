@@ -1,7 +1,7 @@
 // A fetch that answers like the relay for one team key, recording each request.
 export interface Recorded { method: string, path: string, body: unknown, auth: string | null }
 
-export const fakeRelay = (replies: Array<{ from: string, text: string }> = [], stale: Array<{ from: string, text: string }> = []) => {
+export const fakeRelay = (replies: Array<{ from: string, text: string }> = [], stale: Array<{ from: string, text: string }> = [], supersededAt = 0) => {
   const calls: Recorded[] = []
   let inboxCalls = 0
   const answer = (path: string, method: string): [number, unknown] => {
@@ -10,6 +10,7 @@ export const fakeRelay = (replies: Array<{ from: string, text: string }> = [], s
     if (method === 'POST' && path === '/v1/messages') return [201, { id: 'm1', online: true, to: 'cx:fixer@acme', delivery: 'prompt' }]
     if (path.startsWith('/v1/inbox/ci?')) {
       inboxCalls += 1
+      if (supersededAt && inboxCalls >= supersededAt) return [403, { error: 'not_holder' }]
       const batch = inboxCalls === 1 ? stale.map((r, i) => ({ ...r, id: `s${i}` })) : inboxCalls === 2 ? replies.map((r, i) => ({ ...r, id: `r${i}` })) : []
       const messages = batch.map((m) => ({ ...m, hop: 1, sentAt: 0, delivery: 'prompt', fromPerson: 'bob@x.io' }))
       return [200, { messages }]

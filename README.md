@@ -135,6 +135,10 @@ invites.
 A team admin makes a machine key on the board (or with `POST /v1/teams/<team>/keys`); store it as a secret. Then:
 
 ```yaml
+# One key drives one agent: runs that share a key must not overlap.
+concurrency: clawalkietalkie-ci
+
+# …in a job's steps:
 - uses: alinaqi/clawalkietalkie-plugin/action@v1
   id: talkie
   with:

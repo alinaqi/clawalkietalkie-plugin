@@ -28,6 +28,14 @@ const drain = async (relay: RelayClient, name: string, instanceId: string): Prom
   if (messages.length > 0) await relay.ack(name, instanceId, messages.map((m) => m.id))
 }
 
+// One key has one agent: a newer run takes it over, and this run can no longer read its inbox.
+const superseded = (error: unknown): never => {
+  if (error instanceof Error && error.message.includes('not_holder')) {
+    throw new Error('A newer run with the same key took over its agent. Runs that share a key must not overlap: put them in one concurrency group.')
+  }
+  throw error
+}
+
 export const run = async ({ inputs, fetch, now }: RunDeps): Promise<Outputs> => {
   const relay = relayClient(inputs.server, inputs.key, fetch)
   const me = await relay.me()
@@ -38,6 +46,6 @@ export const run = async ({ inputs, fetch, now }: RunDeps): Promise<Outputs> => 
   const outputs: Outputs = { id: sent.id, to: sent.to, delivery: sent.delivery, from: me.address }
   if (inputs.waitSeconds <= 0) return outputs
   const deadline = now() + inputs.waitSeconds * 1000
-  const reply = await waitForReply({ relay, name: me.name, instanceId, from: sent.to, deadline }, now)
+  const reply = await waitForReply({ relay, name: me.name, instanceId, from: sent.to, deadline }, now).catch(superseded)
   return reply === undefined ? outputs : { ...outputs, reply }
 }

@@ -84,6 +84,12 @@ var drain = async (relay, name, instanceId) => {
   const { messages } = await relay.inbox(name, instanceId, 0);
   if (messages.length > 0) await relay.ack(name, instanceId, messages.map((m) => m.id));
 };
+var superseded = (error) => {
+  if (error instanceof Error && error.message.includes("not_holder")) {
+    throw new Error("A newer run with the same key took over its agent. Runs that share a key must not overlap: put them in one concurrency group.");
+  }
+  throw error;
+};
 var run = async ({ inputs, fetch, now }) => {
   const relay = relayClient(inputs.server, inputs.key, fetch);
   const me = await relay.me();
@@ -94,7 +100,7 @@ var run = async ({ inputs, fetch, now }) => {
   const outputs = { id: sent.id, to: sent.to, delivery: sent.delivery, from: me.address };
   if (inputs.waitSeconds <= 0) return outputs;
   const deadline = now() + inputs.waitSeconds * 1e3;
-  const reply = await waitForReply({ relay, name: me.name, instanceId, from: sent.to, deadline }, now);
+  const reply = await waitForReply({ relay, name: me.name, instanceId, from: sent.to, deadline }, now).catch(superseded);
   return reply === void 0 ? outputs : { ...outputs, reply };
 };
 

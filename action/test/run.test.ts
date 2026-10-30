@@ -56,6 +56,12 @@ describe('run', () => {
     await expect(run({ inputs: { ...inputs, server: 'https://relay.test/text-error' }, fetch: relay.fetch, now: () => 0 })).rejects.toThrow('502')
   })
 
+  it('says plainly when a newer run with the same key took over', async () => {
+    const relay = fakeRelay([], [], 2)
+    let time = 0
+    await expect(run({ inputs: { ...inputs, waitSeconds: 60 }, fetch: relay.fetch, now: () => (time += 1000) })).rejects.toThrow('newer run')
+  })
+
   it('gives up waiting at the deadline', async () => {
     const relay = fakeRelay()
     let time = 0
