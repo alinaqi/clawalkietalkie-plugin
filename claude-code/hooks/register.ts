@@ -3,6 +3,7 @@ import { connect, sendMessage, who } from './lib/actions.ts'
 import { runTalkie } from './lib/commands.ts'
 import { stopListening } from './lib/listener.ts'
 import { loadTalkie, relayOf, showStatus, type Options, type Talkie } from './lib/talkie.ts'
+import { folderName } from './lib/frame.ts'
 import { SEND_TOOL, WHO_TOOL } from './lib/tools.ts'
 
 const NOT_READY = 'clawalkietalkie is still starting; try again in a moment.'
@@ -14,7 +15,6 @@ const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
   autoDeliver: options.autoDeliver !== false
 })
 
-const lastSegment = (cwd: string): string => cwd.split('/').filter(Boolean).at(-1) ?? ''
 
 async function boot ($: EngineInterface, options: Options, cwd: string): Promise<Talkie> {
   await $.command.register({
@@ -24,7 +24,7 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
   })
   await $.tool.register(SEND_TOOL)
   await $.tool.register(WHO_TOOL)
-  const talkie = await loadTalkie($, options, lastSegment(cwd))
+  const talkie = await loadTalkie($, options, folderName(cwd))
   if (talkie.auth) await connect($, talkie)
   else showStatus($, talkie)
   return talkie

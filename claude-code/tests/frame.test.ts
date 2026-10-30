@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { formatWho, frameIncoming, parseSendArgs } from '../hooks/lib/frame.ts'
+import { folderName, formatWho, frameIncoming, parseSendArgs } from '../hooks/lib/frame.ts'
 
 test('frameIncoming names the sender, the receiver, and how to reply', async () => {
   const text = frameIncoming({ id: '1', from: 'cc:happy-cat', text: 'what is the status?', sentAt: 0 }, 'happy-dog')
@@ -41,4 +41,11 @@ test('formatWho marks this session, presence and place', async () => {
 
 test('formatWho says when there is nobody', async () => {
   expect(formatWho([], { self: 'x', now: 0 })).toMatch(/No sessions/)
+})
+
+test('folderName takes the last folder of a macOS, Linux or Windows path', async () => {
+  expect(folderName('/work/web')).toBe('web')
+  expect(folderName('C:\\Users\\me\\api\\')).toBe('api')
+  expect(folderName('\\\\server\\share\\docs')).toBe('docs')
+  expect(folderName('')).toBe('')
 })

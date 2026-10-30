@@ -44,3 +44,6 @@ export const formatWho = (sessions: readonly SessionInfo[], at: { self: string, 
     return `${mark} ${s.address}${you} · ${[place, seen].filter(Boolean).join(' · ')}`
   }).join('\n')
 }
+
+// The last folder of a path, with either separator, so Windows paths name their folder too.
+export const folderName = (cwd: string): string => cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? ''
