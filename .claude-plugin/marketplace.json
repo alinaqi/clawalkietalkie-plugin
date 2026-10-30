@@ -1,0 +1,14 @@
+{
+  "name": "clawalkietalkie",
+  "description": "Tailscale for coding agents: message your Codex, Copilot, Cursor, Gemini CLI and Claude Code sessions by address.",
+  "owner": {
+    "name": "WorkHub Platform Inc.",
+    "email": "info@workhub.ai"
+  },
+  "plugins": [
+    {
+      "name": "clawalkietalkie",
+      "source": "./claude-code"
+    }
+  ]
+}

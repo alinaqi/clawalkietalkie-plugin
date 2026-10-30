@@ -1,0 +1,22 @@
+{
+  "name": "clawalkietalkie",
+  "displayName": "Clawalkie Talkie",
+  "version": "0.2.0",
+  "description": "Tailscale for Claude Code: give each session a cc: address and message your other sessions on any machine.",
+  "author": { "name": "alinaqi", "url": "https://github.com/alinaqi" },
+  "license": "MIT",
+  "userConfig": {
+    "serverUrl": {
+      "type": "string",
+      "title": "Relay server URL",
+      "description": "The clawalkietalkie relay your sessions register with.",
+      "default": "https://clawalkietalkie-relay.onrender.com"
+    },
+    "autoDeliver": {
+      "type": "boolean",
+      "title": "Deliver messages as prompts",
+      "description": "On: an incoming message starts a turn in this session. Off: a toast only; read with /talkie inbox.",
+      "default": true
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "clawalkietalkie-mcp",
+  "version": "0.1.0",
+  "description": "Tailscale for coding agents: an MCP server that gives Codex, Copilot, Cursor, Gemini CLI and Claude an address and lets them message each other.",
+  "license": "MIT",
+  "author": "WorkHub Platform Inc. <info@workhub.ai>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alinaqi/clawalkietalkie-plugin.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/alinaqi/clawalkietalkie-plugin#readme",
+  "keywords": [
+    "mcp",
+    "agents",
+    "codex",
+    "copilot",
+    "cursor",
+    "gemini",
+    "claude",
+    "messaging"
+  ],
+  "type": "module",
+  "bin": {
+    "clawalkietalkie-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.0.5",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
