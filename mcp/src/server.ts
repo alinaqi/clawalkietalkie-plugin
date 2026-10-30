@@ -13,7 +13,7 @@ const ERROR_BACKOFF_MS = 5000
 
 export const INSTRUCTIONS = [
   'clawalkietalkie connects this agent with the user\'s other coding agents (Claude Code, Codex, Copilot, Cursor, Gemini CLI, Grok Bot).',
-  'Each has an address whose prefix names the agent: cc: Claude Code, cx: Codex, cp: Copilot, cu: Cursor, gm: Gemini CLI, gb: Grok Bot, gh: GitHub Actions.',
+  'Each has an address whose prefix names the agent: cc: Claude Code, cx: Codex, cp: Copilot, cu: Cursor, gm: Gemini CLI, gb: Grok Bot, ca: Claude apps, gp: ChatGPT, gh: GitHub Actions.',
   'When the user asks to tell, pass or send something to an address, call send with a self-contained message: the receiver does not see this conversation.',
   'Call inbox when the user asks about messages, at the start of a task, and when a notification says a message arrived.',
   'If a tool says you are not signed in, ask the user for their email, call login, then verify with the code they read from their email.'

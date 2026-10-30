@@ -4,7 +4,8 @@ import { isKind, type Kind } from '../../claude-code/hooks/lib/address.ts'
 // (whose client name mentions vscode) is tried before Copilot.
 const CLIENTS: ReadonlyArray<[RegExp, Kind]> = [
   [/codex/i, 'cx'],
-  [/claude/i, 'cc'],
+  [/claude[- ]?code/i, 'cc'],
+  [/claude/i, 'ca'],
   [/cursor/i, 'cu'],
   [/gemini/i, 'gm'],
   [/grok/i, 'gb'],

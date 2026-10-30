@@ -20,7 +20,9 @@ export const KINDS = {
   gb: 'Grok Bot',
   cu: 'Cursor',
   gm: 'Gemini CLI',
-  gh: 'GitHub Actions'
+  gh: 'GitHub Actions',
+  ca: 'Claude apps',
+  gp: 'ChatGPT'
 } as const
 
 export type Kind = keyof typeof KINDS

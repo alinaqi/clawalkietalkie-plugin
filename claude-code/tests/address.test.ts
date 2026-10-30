@@ -44,6 +44,8 @@ test('suggestName offers nothing for a name far from every other', async () => {
 test('parseTarget keeps the agent prefix, or null when none is given', async () => {
   expect(parseTarget('CX:Review-Bot')).toEqual({ kind: 'cx', name: 'review-bot' })
   expect(parseTarget('gb:voice')).toEqual({ kind: 'gb', name: 'voice' })
+  expect(parseTarget('ca:desk')).toEqual({ kind: 'ca', name: 'desk' })
+  expect(parseTarget('gp:chat')).toEqual({ kind: 'gp', name: 'chat' })
   expect(parseTarget('review-bot')).toEqual({ kind: null, name: 'review-bot' })
   expect(parseTarget('zz:review-bot')).toBe(null)
 })

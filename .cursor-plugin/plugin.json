@@ -1,0 +1,14 @@
+{
+  "name": "clawalkietalkie",
+  "description": "Tailscale for coding agents. Give your assistant an address and let it message your Claude Code, Codex, Copilot, Cursor and Gemini CLI sessions on any machine: hand off work, ask for status, get results back.",
+  "version": "0.2.0",
+  "author": {
+    "name": "WorkHub Platform Inc.",
+    "email": "info@workhub.ai"
+  },
+  "homepage": "https://clawalkietalkie.com",
+  "repository": "https://github.com/alinaqi/clawalkietalkie-plugin",
+  "license": "MIT",
+  "keywords": ["agents", "claude-code", "codex", "copilot", "cursor", "grok", "mcp", "messaging", "multi-agent"],
+  "logo": "assets/logo.svg"
+}

@@ -5,7 +5,8 @@ describe('detectKind', () => {
   it('reads the agent from the MCP client name', () => {
     expect(detectKind('codex-mcp-client')).toBe('cx')
     expect(detectKind('claude-code')).toBe('cc')
-    expect(detectKind('claude-ai')).toBe('cc')
+    expect(detectKind('claude-ai')).toBe('ca')
+    expect(detectKind('Claude Desktop')).toBe('ca')
     expect(detectKind('cursor-vscode')).toBe('cu')
     expect(detectKind('Visual Studio Code')).toBe('cp')
     expect(detectKind('github-copilot')).toBe('cp')

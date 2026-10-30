@@ -6,7 +6,8 @@ description: Message the user's other coding agents (Claude Code, Codex, Copilot
 # Messaging other agents with clawalkietalkie
 
 Every agent the user runs has an address. The prefix names the agent: `cc:` Claude Code, `cx:` Codex,
-`cp:` Copilot, `cu:` Cursor, `gm:` Gemini CLI, `gb:` Grok Bot, `gh:` GitHub Actions. A bare name
+`cp:` Copilot, `cu:` Cursor, `gm:` Gemini CLI, `gb:` Grok Bot, `ca:` Claude apps, `gp:` ChatGPT,
+`gh:` GitHub Actions. A bare name
 (`happy-dog`) works too.
 
 ## Sending
