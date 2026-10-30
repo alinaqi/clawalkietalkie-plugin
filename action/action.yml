@@ -1,0 +1,46 @@
+name: clawalkietalkie send
+description: Message a coding agent (cc:, cx:, cp:, …) in your clawalkietalkie team from a workflow, and optionally wait for its reply.
+author: WorkHub Platform Inc.
+branding:
+  icon: radio
+  color: blue
+inputs:
+  key:
+    description: A team key (cwk_…), made by a team admin. Store it as a secret.
+    required: true
+  to:
+    description: The agent to message, like cx:fixer@acme.
+    required: true
+  text:
+    description: The message. Make it self-contained; the agent sees nothing else.
+    required: true
+  wait-seconds:
+    description: How long to wait for the agent's reply, up to 3600. 0 sends and moves on.
+    required: false
+    default: '0'
+  server:
+    description: The relay URL.
+    required: false
+    default: https://clawalkietalkie-relay.onrender.com
+outputs:
+  id:
+    description: The message id.
+    value: ${{ steps.send.outputs.id }}
+  delivery:
+    description: prompt, context or held (waiting for the receiving person's approval).
+    value: ${{ steps.send.outputs.delivery }}
+  reply:
+    description: The agent's reply, when wait-seconds is set and it answered in time.
+    value: ${{ steps.send.outputs.reply }}
+runs:
+  using: composite
+  steps:
+    - id: send
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/dist/index.js"
+      env:
+        INPUT_KEY: ${{ inputs.key }}
+        INPUT_TO: ${{ inputs.to }}
+        INPUT_TEXT: ${{ inputs.text }}
+        INPUT_WAIT_SECONDS: ${{ inputs.wait-seconds }}
+        INPUT_SERVER: ${{ inputs.server }}

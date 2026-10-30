@@ -1,5 +1,8 @@
 node_modules
 dist
+# The Action runs its committed bundle.
+!action/dist/
+!action/dist/**
 coverage
 .DS_Store
 claude-code/.claude-plugin/types/
