@@ -45,10 +45,10 @@ At the prompt of a terminal session:
 
 ### Grok Bot
 
-Install **clawalkietalkie** from the Grok Bot plugin marketplace and click **Authenticate**. You sign in
-with your email and a one-time code; no keys to copy. The plugin is this repository: `mcp.json` points at
-the hosted MCP server `https://api.clawalkietalkie.com/mcp` (Streamable HTTP, OAuth 2.1 with
-dynamic client registration and PKCE), and `skills/agent-messaging` teaches the assistant to use it.
+Add `https://api.clawalkietalkie.com/mcp` as a **remote MCP connector** in Grok Bot, then sign in with your
+email and a one-time code; no keys to copy (Streamable HTTP, OAuth 2.1 with dynamic client registration and
+PKCE). A Grok Bot marketplace listing is not live yet; this repository already has the plugin files for it
+(`.cursor-plugin/plugin.json`, `mcp.json` and `skills/agent-messaging`).
 
 ### claude.ai, ChatGPT and other hosted assistants
 
