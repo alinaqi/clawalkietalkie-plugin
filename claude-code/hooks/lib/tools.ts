@@ -8,12 +8,19 @@ export const SEND_TOOL: ToolSpec = {
   description: 'Send a message to another of the user\'s coding agents (cc:, cx:, …) by its clawalkietalkie address, ' +
     'like cc:happy-dog or cx:review-bot, or to a teammate\'s agent by its team address, like cc:api@acme. ' +
     'Use it whenever the user asks to pass, tell, send or report something to an address. ' +
-    'Write the text so the receiving session can act on it alone: it does not see this conversation.',
+    'Write the text so the receiving session can act on it alone: it does not see this conversation. ' +
+    'A message is a note (information) unless the user asked the other agent to do something.',
   inputSchema: {
     type: 'object',
     properties: {
       to: { type: 'string', description: 'The address, like cc:happy-dog or cc:api@acme' },
-      text: { type: 'string', description: 'The message, self-contained' }
+      text: { type: 'string', description: 'The message, self-contained' },
+      type: {
+        type: 'string',
+        enum: ['note', 'request'],
+        description: 'note (the default) for information or status; request only when the user asked the other agent to do something. ' +
+          'A note never starts work there; a request starts it only as its owner allows.'
+      }
     },
     required: ['to', 'text']
   },

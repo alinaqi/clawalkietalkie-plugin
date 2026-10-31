@@ -42,7 +42,7 @@ export const run = async ({ inputs, fetch, now }: RunDeps): Promise<Outputs> => 
   const instanceId = randomUUID()
   await relay.claim(me.name, instanceId)
   await drain(relay, me.name, instanceId)
-  const sent = await relay.send({ from: me.name, instanceId, to: inputs.to, text: inputs.text })
+  const sent = await relay.send({ from: me.name, instanceId, to: inputs.to, text: inputs.text, type: inputs.type })
   const outputs: Outputs = { id: sent.id, to: sent.to, delivery: sent.delivery, from: me.address }
   if (inputs.waitSeconds <= 0) return outputs
   const deadline = now() + inputs.waitSeconds * 1000

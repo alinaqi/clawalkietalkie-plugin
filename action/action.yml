@@ -14,6 +14,10 @@ inputs:
   text:
     description: The message. Make it self-contained; the agent sees nothing else.
     required: true
+  type:
+    description: note (information, the default) or request (asks the agent to act; it runs only if the agent accepts requests from CI).
+    required: false
+    default: note
   wait-seconds:
     description: How long to wait for the agent's reply, up to 3600. 0 sends and moves on.
     required: false
@@ -42,5 +46,6 @@ runs:
         INPUT_KEY: ${{ inputs.key }}
         INPUT_TO: ${{ inputs.to }}
         INPUT_TEXT: ${{ inputs.text }}
+        INPUT_TYPE: ${{ inputs.type }}
         INPUT_WAIT_SECONDS: ${{ inputs.wait-seconds }}
         INPUT_SERVER: ${{ inputs.server }}

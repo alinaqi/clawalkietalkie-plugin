@@ -1,5 +1,6 @@
 // The action's inputs, as GitHub hands them to a step: INPUT_<NAME> environment variables.
-export interface Inputs { key: string, to: string, text: string, server: string, waitSeconds: number }
+export type MessageType = 'note' | 'request'
+export interface Inputs { key: string, to: string, text: string, server: string, waitSeconds: number, type: MessageType }
 
 const DEFAULT_SERVER = 'https://api.clawalkietalkie.com'
 const MAX_WAIT_SECONDS = 3600
@@ -7,6 +8,13 @@ const MAX_WAIT_SECONDS = 3600
 const required = (env: Record<string, string | undefined>, name: string): string => {
   const value = env[`INPUT_${name.toUpperCase()}`]?.trim()
   if (!value) throw new Error(`The ${name} input is required.`)
+  return value
+}
+
+// A note informs; a request asks the agent to do something (it runs only if the agent accepts requests from CI).
+const typeOf = (raw: string | undefined): MessageType => {
+  const value = (raw ?? '').trim().toLowerCase() || 'note'
+  if (value !== 'note' && value !== 'request') throw new Error('The type input must be note or request.')
   return value
 }
 
@@ -19,6 +27,7 @@ export const readInputs = (env: Record<string, string | undefined>): Inputs => {
     to: required(env, 'to'),
     text: required(env, 'text'),
     server: env.INPUT_SERVER?.trim() || DEFAULT_SERVER,
+    type: typeOf(env.INPUT_TYPE),
     waitSeconds: Number.isFinite(wait) ? Math.min(Math.max(0, Math.floor(wait)), MAX_WAIT_SECONDS) : 0
   }
 }

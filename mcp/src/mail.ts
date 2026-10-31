@@ -1,6 +1,6 @@
 // Sending, receiving and listing.
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from '../../claude-code/hooks/lib/address.ts'
-import { boardUrl, type Result, type Sent } from '../../claude-code/hooks/lib/relay.ts'
+import { boardUrl, type MessageType, type Result, type Sent } from '../../claude-code/hooks/lib/relay.ts'
 import { describeWho, parseStatus, statusText } from '../../claude-code/hooks/lib/who.ts'
 import { formatInbox } from './format.ts'
 import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
@@ -58,16 +58,20 @@ const sent = (value: Sent, target: Target): string => {
 const refused = (s: AgentState, res: Extract<Result<unknown>, { ok: false }>, team: string | null): string => {
   const where = team ?? 'that team'
   if (res.error === 'not_shared') return `Not sent: this agent is not shared in ${where}. Ask the user to share it on the board, ${boardUrl(s.deps.serverUrl)}.`
+  if (res.error === 'blocked_by_receiver') return 'Not sent: that agent doesn\'t accept messages from you (its owner\'s setting).'
   if (res.error === 'denied_by_policy') return `Not sent: the policy of ${where} does not allow this message.`
   return res.status === 429 ? 'Not sent: 20 messages in the last minute; wait a moment.' : `Not sent: ${why(res)}.`
 }
 
-export const send = async (s: AgentState, to: string, text: string): Promise<string> => {
+export interface Outgoing { text: string, type: MessageType }
+
+// type: 'note' informs; 'request' asks the receiver to do something, as its owner's settings allow.
+export const send = async (s: AgentState, to: string, out: Outgoing): Promise<string> => {
   if (!s.auth) return SIGN_IN
   const target = parseTarget(to)
   if (!target) return `"${to}" is not an address (like cc:happy-dog, cx:review-bot or cc:api@acme).`
   const { name: from, instanceId } = s.identity
-  const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), text, hop: hopFor(s, hopKey(target)!) })
+  const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), ...out, hop: hopFor(s, hopKey(target)!) })
   if (res.ok) return sent(res.value, target)
   return res.status === 404 ? unknown(s, target, to.trim()) : refused(s, res, target.team)
 }

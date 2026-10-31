@@ -4,6 +4,7 @@ import type { EngineInterface } from 'claude-code'
 import { formatAddress } from './address.ts'
 import { connect, login, logout, rename, verify, who } from './actions.ts'
 import { approvals, decide } from './approvals.ts'
+import { autoApprove } from './autoapprove.ts'
 import { parseSendArgs } from './frame.ts'
 import { readMessage } from './hops.ts'
 import { stopListening } from './listener.ts'
@@ -17,7 +18,8 @@ export const HELP = [
   '/talkie login <email>         email a sign-in code',
   '/talkie verify <code>         finish signing in',
   '/talkie who                   list your sessions and your teams\' agents',
-  '/talkie send <address> <text> send a message (cc:name, or cc:name@team)',
+  '/talkie send <address> <text> send a note: information, never a task (cc:name, or cc:name@team)',
+  '/talkie ask <address> <text>  send a request: ask that agent to do something',
   '/talkie name <name>           rename this session',
   '/talkie inbox                 show held messages (auto-delivery off, or replies to replies)',
   '/talkie teams                 list your teams, invites and the board',
@@ -26,9 +28,12 @@ export const HELP = [
   '/talkie unshare <team>        stop sharing it there',
   '/talkie approvals             list teammates\' messages waiting for you',
   '/talkie approve | deny <id>   deliver a held message, or drop it',
+  '/talkie autoapprove [on|off]  show or set whether requests that would wait for you start right away',
   '/talkie on | off              start or stop listening',
   '/talkie status                show the address and the relay',
-  '/talkie logout                sign out and revoke this device'
+  '/talkie logout                sign out and revoke this device',
+  '',
+  'Who may message each agent, and what it may do, are its receiving settings, on the board.'
 ].join('\n')
 
 const status = (t: Talkie): string => [
@@ -61,16 +66,20 @@ function turnOff ($: EngineInterface, t: Talkie): string {
   return 'Listening stopped; messages wait on the relay for up to 24 h.'
 }
 
-function send ($: EngineInterface, t: Talkie, rest: string): Promise<string> | string {
-  const parsed = parseSendArgs(rest)
-  return parsed ? sendMessage($, t, { ...parsed, isAnswer: false }) : 'Usage: /talkie send <cc:name or cc:name@team> <text>'
+// send sends a note, ask a request.
+function send ($: EngineInterface, t: Talkie, args: string): Promise<string> | string {
+  const { word } = split(args)
+  const parsed = parseSendArgs(args.trim().slice(word.length))
+  const type = word === 'ask' ? 'request' : 'note'
+  return parsed ? sendMessage($, t, { ...parsed, type, isAnswer: false }) : `Usage: /talkie ${word} <cc:name or cc:name@team> <text>`
 }
 
-// The team subcommands; HELP for any word that is not one.
+// The team and approval subcommands; HELP for any word that is not one.
 function runTeam ($: EngineInterface, t: Talkie, args: string): Promise<string> | string {
   const { word, rest } = split(args)
   if (word === 'teams') return teams($, t)
   if (word === 'approvals') return approvals($, t)
+  if (word === 'autoapprove') return autoApprove($, t, rest)
   if (!rest && USAGE[word]) return `Usage: /talkie ${word} ${USAGE[word]}`
   if (word === 'join') return join($, t, rest)
   if (word === 'share') return share($, t, rest.toLowerCase())
@@ -88,7 +97,8 @@ export async function runTalkie ($: EngineInterface, t: Talkie, args: string): P
     case 'logout': return logout($, t)
     case 'who': return who($, t)
     case 'name': return rename($, t, rest)
-    case 'send': return send($, t, args.trim().slice(word.length))
+    case 'send':
+    case 'ask': return send($, t, args)
     case 'inbox': return inbox(t)
     case 'status': return status(t)
     case 'on': return turnOn($, t)

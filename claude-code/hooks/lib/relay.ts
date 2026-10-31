@@ -7,7 +7,7 @@ import { teamCalls } from './relay-teams.ts'
 
 export type { Fetch, FetchInit, RelayConfig, Result } from './relay-core.ts'
 export type {
-  AgentState, AgentStatus, Approval, ClaimBody, InboxMessage, Invite, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
+  AgentState, AgentStatus, Approval, ClaimBody, InboxMessage, Invite, MessageType, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
 } from './relay-types.ts'
 
 export const createRelay = (fetch: Fetch, config: RelayConfig) => {
@@ -17,6 +17,8 @@ export const createRelay = (fetch: Fetch, config: RelayConfig) => {
     verify: (body: { email: string, code: string, device: string }) =>
       call<{ token: string, email: string }>('POST', '/v1/auth/verify', body),
     revoke: () => call<object>('DELETE', '/v1/auth/token'),
+    autoApprove: () => call<{ on: boolean }>('GET', '/v1/settings/auto-approve'),
+    setAutoApprove: (on: boolean) => call<{ on: boolean }>('PUT', '/v1/settings/auto-approve', { on }),
     ...sessionCalls(call),
     ...teamCalls(call)
   }

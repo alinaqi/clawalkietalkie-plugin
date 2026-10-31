@@ -13,14 +13,14 @@ export const SIGNED_IN = { auth: { token: 'tok-1', email: 'a@x.io' }, 'session:s
 
 export const setup = (on: On, store: Record<string, unknown> = {}) => {
   const relay = createFakeRelay()
-  const seen = { prompts: [] as string[], contexts: [] as string[][], statuses: [] as Array<string | undefined>, toasts: [] as string[], tools: [] as string[], commands: [] as string[] }
+  const seen = { prompts: [] as string[], contexts: [] as string[][], statuses: [] as Array<string | undefined>, toasts: [] as string[], tools: [] as string[], commands: [] as string[], hints: [] as string[] }
   const clock = mock.clock(on)
   mock.store(on, store)
   on('session.start', () => ({ cwd: '/work/web' }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.id', () => ({ value: 'sess-1' }))
   on('http.fetch', ($, e) => ({ value: relay.fetch(e.url, e.init) }))
-  on('command.register', ($, e) => { seen.commands.push(e.name); return { value: { command: e.name } } })
+  on('command.register', ($, e) => { seen.commands.push(e.name); seen.hints.push(e.argumentHint ?? ''); return { value: { command: e.name } } })
   on('tool.register', ($, e) => { seen.tools.push(e.name); return { value: { tool: `mcp__clawalkietalkie__${e.name}` } } })
   on('prompt.submit', ($, e) => { seen.prompts.push(e.text); seen.contexts.push([...(e.context ?? [])]); return { text: e.text } })
   on('ui.status', ($, e) => { seen.statuses.push(e.text); return { value: undefined } })

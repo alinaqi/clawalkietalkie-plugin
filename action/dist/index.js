@@ -9,6 +9,11 @@ var required = (env, name) => {
   if (!value) throw new Error(`The ${name} input is required.`);
   return value;
 };
+var typeOf = (raw) => {
+  const value = (raw ?? "").trim().toLowerCase() || "note";
+  if (value !== "note" && value !== "request") throw new Error("The type input must be note or request.");
+  return value;
+};
 var readInputs = (env) => {
   const key = required(env, "key");
   if (!key.startsWith("cwk_")) throw new Error("The key input must be a team key (cwk_\u2026), made by a team admin.");
@@ -18,6 +23,7 @@ var readInputs = (env) => {
     to: required(env, "to"),
     text: required(env, "text"),
     server: env.INPUT_SERVER?.trim() || DEFAULT_SERVER,
+    type: typeOf(env.INPUT_TYPE),
     waitSeconds: Number.isFinite(wait) ? Math.min(Math.max(0, Math.floor(wait)), MAX_WAIT_SECONDS) : 0
   };
 };
@@ -96,7 +102,7 @@ var run = async ({ inputs, fetch, now }) => {
   const instanceId = randomUUID2();
   await relay.claim(me.name, instanceId);
   await drain(relay, me.name, instanceId);
-  const sent = await relay.send({ from: me.name, instanceId, to: inputs.to, text: inputs.text });
+  const sent = await relay.send({ from: me.name, instanceId, to: inputs.to, text: inputs.text, type: inputs.type });
   const outputs = { id: sent.id, to: sent.to, delivery: sent.delivery, from: me.address };
   if (inputs.waitSeconds <= 0) return outputs;
   const deadline = now() + inputs.waitSeconds * 1e3;

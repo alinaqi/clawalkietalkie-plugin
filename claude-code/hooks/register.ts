@@ -13,7 +13,8 @@ const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
 
 function onTools (on: On, box: Box): void {
   on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
-    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), isAnswer: true }
+    const type = e.type === undefined ? undefined : String(e.type)
+    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type, isAnswer: true }
     return { result: box.talkie ? await sendMessage($, box.talkie, out) : NOT_READY }
   }).catch(() => FAILED)
   on('tool.call', { tool: 'mcp__clawalkietalkie__who' }, async ($) =>

@@ -23,7 +23,7 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
   await $.command.register({
     name: 'talkie',
     description: 'Message your other coding agents (cc:, cx:, …) and your teammates\' agents by address',
-    argumentHint: '[login|verify|who|send|name|inbox|teams|join|share|unshare|approvals|approve|deny|on|off|status|logout]'
+    argumentHint: '[login|verify|who|send|ask|name|inbox|teams|join|share|unshare|approvals|approve|deny|autoapprove|on|off|status|logout]'
   })
   await $.tool.register(SEND_TOOL)
   await $.tool.register(WHO_TOOL)

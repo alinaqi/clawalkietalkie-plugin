@@ -1,6 +1,6 @@
 {
   "name": "clawalkietalkie-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tailscale for coding agents: an MCP server that gives Codex, Copilot, Cursor, Gemini CLI and Claude an address and lets them message each other.",
   "license": "MIT",
   "author": "WorkHub Platform Inc. <info@workhub.ai>",

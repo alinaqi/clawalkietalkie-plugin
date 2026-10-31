@@ -18,7 +18,7 @@ test('the send tool sends from this session and reports delivery', async ($, on)
   await start($)
   const res = await $.tool.call({ tool: SEND, to: 'cc:happy-cat', text: 'build is green' })
   expect(res.result).toMatch(/Sent to cc:happy-cat/)
-  expect(relay.find('POST', '/v1/messages')[0]?.body).toEqual({ from: 'happy-dog', instanceId: 'inst-dog', to: 'cc:happy-cat', text: 'build is green', hop: 0 })
+  expect(relay.find('POST', '/v1/messages')[0]?.body).toEqual({ from: 'happy-dog', instanceId: 'inst-dog', to: 'cc:happy-cat', text: 'build is green', hop: 0, type: 'note' })
 })
 
 test('the send tool refuses a bad address and an unknown one', async ($, on) => {

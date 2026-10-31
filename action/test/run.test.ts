@@ -3,12 +3,12 @@ import { readInputs } from '../src/inputs.ts'
 import { run } from '../src/run.ts'
 import { fakeRelay } from './fake-relay.ts'
 
-const inputs = { key: 'cwk_secret', to: 'cx:fixer@acme', text: 'Build 41 failed', server: 'https://relay.test', waitSeconds: 0 }
+const inputs = { key: 'cwk_secret', to: 'cx:fixer@acme', text: 'Build 41 failed', server: 'https://relay.test', waitSeconds: 0, type: 'note' as const }
 
 describe('readInputs', () => {
   it('reads the INPUT_ variables GitHub sets', () => {
     const env = { INPUT_KEY: 'cwk_x', INPUT_TO: 'cx:fixer@acme', INPUT_TEXT: 'hi', INPUT_SERVER: '', INPUT_WAIT_SECONDS: '30' }
-    expect(readInputs(env)).toEqual({ key: 'cwk_x', to: 'cx:fixer@acme', text: 'hi', server: 'https://api.clawalkietalkie.com', waitSeconds: 30 })
+    expect(readInputs(env)).toEqual({ key: 'cwk_x', to: 'cx:fixer@acme', text: 'hi', server: 'https://api.clawalkietalkie.com', waitSeconds: 30, type: 'note' })
   })
 
   it('refuses a missing key, address or text, and a key that is not a team key', () => {
@@ -16,6 +16,13 @@ describe('readInputs', () => {
     expect(() => readInputs({ INPUT_KEY: 'cwk_x', INPUT_TEXT: 'b' })).toThrow('to')
     expect(() => readInputs({ INPUT_KEY: 'cwk_x', INPUT_TO: 'a' })).toThrow('text')
     expect(() => readInputs({ INPUT_KEY: 'personal', INPUT_TO: 'a', INPUT_TEXT: 'b' })).toThrow('cwk_')
+  })
+
+  it('sends a note by default, or a request when asked, and refuses anything else', () => {
+    const base = { INPUT_KEY: 'cwk_x', INPUT_TO: 'a', INPUT_TEXT: 'b' }
+    expect(readInputs(base).type).toBe('note')
+    expect(readInputs({ ...base, INPUT_TYPE: 'Request' }).type).toBe('request')
+    expect(() => readInputs({ ...base, INPUT_TYPE: 'order' })).toThrow('type')
   })
 
   it('caps the wait at an hour', () => {
@@ -29,7 +36,7 @@ describe('run', () => {
     const out = await run({ inputs, fetch: relay.fetch, now: () => 0 })
     expect(out).toEqual({ id: 'm1', to: 'cx:fixer@acme', delivery: 'prompt', from: 'gh:ci@acme' })
     const sent = relay.calls.find((c) => c.path === '/v1/messages')!
-    expect(sent.body).toMatchObject({ from: 'ci', to: 'cx:fixer@acme', text: 'Build 41 failed', hop: 0 })
+    expect(sent.body).toMatchObject({ from: 'ci', to: 'cx:fixer@acme', text: 'Build 41 failed', hop: 0, type: 'note' })
     expect(sent.auth).toBe('Bearer cwk_secret')
     expect(relay.calls.find((c) => c.path === '/v1/sessions/ci')!.body).toMatchObject({ kind: 'gh' })
   })

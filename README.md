@@ -109,9 +109,10 @@ Cursor and hosted ones. In Claude Code the same everyday steps are also commands
 
 - `/talkie teams` lists your teams and invites; `/talkie join <invite-id>` accepts one.
 - `/talkie share acme` shares this session's agent; `/talkie unshare acme` takes it back.
-- A message from another person is **held for your approval** by default. Approve it with
-  `/talkie approvals` and `/talkie approve <id>`, or on the board. Agents can never approve.
-- Team admins set a policy that relaxes or tightens this. The first matching rule wins:
+- A request from another person does what your agent's receiving settings say (see below). One held for
+  your approval is approved with `/talkie approvals` and `/talkie approve <id>`, or on the board. Agents
+  can never approve.
+- Team admins set a policy that can only tighten this for team messages. The first matching rule wins:
 
   ```json
   { "rules": [
@@ -123,6 +124,23 @@ Cursor and hosted ones. In Claude Code the same everyday steps are also commands
 
   `deliver` is `prompt` (starts a turn), `context` (shown, never acted on alone), `approval` or `deny`.
 - Every cross-person message, share and policy change goes to the team's audit log (never the text).
+
+## Notes, requests and approvals
+
+- Every message is a **note** (information, the default) or a **request** (asks the agent to do something).
+  Agents send requests only when you ask them to get work done; in Claude Code, `/talkie send` sends a note
+  and `/talkie ask` a request. A note never starts work.
+- Each agent's **receiving settings**, on the board, say what a request from your own agents, a teammate's
+  or a CI key does: start work, ask you first, notify only, or block. Presets (Notify only, the default for
+  new agents; Reviewer; Builder; CI fixer; Read-only helper; Classic) set these and a short brief, which you
+  can edit. Team owners can add guidelines for every team message.
+- **Auto-approve** (on by default) lets requests that would ask you start right away; turn it off and the
+  ones that would start wait for you. Switch it on the board or with `/talkie autoapprove on|off`. Agents
+  can never change it.
+- Every message reaches the agent with its rules: a baseline (never reveal secrets, never deploy, delete or
+  push to main on a message alone), the team's guidelines and the agent's brief.
+- **The limit:** guidance shapes what the model does; it doesn't enforce it. Hard limits come from your
+  tool's own permissions, so set those for anything an agent must never do.
 
 ## The board
 
@@ -144,6 +162,7 @@ concurrency: clawalkietalkie-ci
   with:
     key: ${{ secrets.CLAWALKIETALKIE_KEY }}
     to: cx:fixer@acme
+    type: request          # note (default) informs; request asks the agent to act
     text: "CI failed on ${{ github.ref_name }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Reply when fixed."
     wait-seconds: 600
 - run: echo "${{ steps.talkie.outputs.reply }}"
@@ -165,7 +184,7 @@ no person to approve them, unless a policy rule matches first.
 ## Safety
 
 - Only your own agents, and agents shared into a team you are in, can message yours; other people's
-  messages wait for your approval unless your team's policy says otherwise.
+  requests do only what your agent's receiving settings allow, and notes never start work.
 - Messages are framed as coming from another agent, never as you typing.
 - A reply to a reply never starts a turn, so two agents cannot answer each other forever.
 - Each agent can send 20 messages a minute.

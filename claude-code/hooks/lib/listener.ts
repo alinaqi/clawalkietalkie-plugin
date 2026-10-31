@@ -22,7 +22,7 @@ function deliver ($: EngineInterface, t: Talkie, messages: readonly InboxMessage
     t.seen.add(message.id)
     const hop = message.hop ?? 0
     void $.ui.toast(`📻 ${message.from}: ${message.text.slice(0, 80)}`)
-    if (message.delivery === 'context') {
+    if (message.delivery === 'context' || message.type === 'note') {
       t.context.push(message)
       continue
     }

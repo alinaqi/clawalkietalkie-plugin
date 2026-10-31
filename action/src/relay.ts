@@ -26,7 +26,7 @@ export const relayClient = (server: string, key: string, fetch: typeof globalThi
   return {
     me: () => call<Me>('GET', '/v1/me'),
     claim: (name: string, instanceId: string) => call('PUT', `/v1/sessions/${name}`, { instanceId, kind: 'gh', host: 'github-actions' }),
-    send: (input: { from: string, instanceId: string, to: string, text: string }) => call<Sent>('POST', '/v1/messages', { ...input, hop: 0 }),
+    send: (input: { from: string, instanceId: string, to: string, text: string, type: 'note' | 'request' }) => call<Sent>('POST', '/v1/messages', { ...input, hop: 0 }),
     inbox: (name: string, instanceId: string, wait: number) =>
       call<{ messages: Incoming[] }>('GET', `/v1/inbox/${name}?instanceId=${instanceId}&wait=${wait}`),
     ack: (name: string, instanceId: string, ids: string[]) => call('POST', `/v1/inbox/${name}/ack`, { instanceId, ids })
