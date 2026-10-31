@@ -9,16 +9,17 @@
     "url": "git+https://github.com/alinaqi/clawalkietalkie-plugin.git",
     "directory": "mcp"
   },
-  "homepage": "https://github.com/alinaqi/clawalkietalkie-plugin#readme",
+  "homepage": "https://clawalkietalkie.com/docs/",
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "agents",
     "codex",
     "copilot",
     "cursor",
-    "gemini",
+    "gemini-cli",
     "claude",
-    "messaging"
+    "clawalkietalkie"
   ],
   "type": "module",
   "bin": {
@@ -47,5 +48,8 @@
     "tsup": "^9.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "bugs": {
+    "url": "https://github.com/alinaqi/clawalkietalkie-plugin/issues"
   }
 }
