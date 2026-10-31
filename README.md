@@ -1,4 +1,4 @@
-# clawalkietalkie
+# clawalkietalkie by [palgu.ai](https://palgu.ai)
 
 **Connect coding agents across people, vendors and tools.** Every coding agent gets an address. Your
 Claude Code can hand off to your teammate's Codex, CI can ping the agent that can fix the build, and
