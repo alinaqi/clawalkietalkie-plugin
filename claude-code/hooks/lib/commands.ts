@@ -20,6 +20,7 @@ export const HELP = [
   '/talkie who                   list your sessions and your teams\' agents',
   '/talkie send <address> <text> send a note: information, never a task (cc:name, or cc:name@team)',
   '/talkie ask <address> <text>  send a request: ask that agent to do something',
+  '  (--reply-to <id> after the address threads either under a message you received)',
   '/talkie name <name>           rename this session',
   '/talkie inbox                 show held messages (auto-delivery off, or replies to replies)',
   '/talkie teams                 list your teams, invites and the board',
@@ -66,12 +67,22 @@ function turnOff ($: EngineInterface, t: Talkie): string {
   return 'Listening stopped; messages wait on the relay for up to 24 h.'
 }
 
+// "<address> --reply-to <id> <text>" (or --reply-to=<id>): the id of the received message it answers.
+const REPLY_TO = /^(\s*\S+)\s+--reply-to(?:=|\s+)(\S+)(?=\s|$)/
+
+const takeReplyTo = (args: string): { args: string, replyTo?: string } => {
+  const match = REPLY_TO.exec(args)
+  return match ? { args: `${match[1]}${args.slice(match[0].length)}`, replyTo: match[2] } : { args }
+}
+
 // send sends a note, ask a request.
 function send ($: EngineInterface, t: Talkie, args: string): Promise<string> | string {
   const { word } = split(args)
-  const parsed = parseSendArgs(args.trim().slice(word.length))
+  const { args: rest, replyTo } = takeReplyTo(args.trim().slice(word.length))
+  const parsed = parseSendArgs(rest)
   const type = word === 'ask' ? 'request' : 'note'
-  return parsed ? sendMessage($, t, { ...parsed, type, isAnswer: false }) : `Usage: /talkie ${word} <cc:name or cc:name@team> <text>`
+  if (!parsed) return `Usage: /talkie ${word} <cc:name or cc:name@team> [--reply-to <id>] <text>`
+  return sendMessage($, t, { ...parsed, type, isAnswer: false, replyTo })
 }
 
 // The team and approval subcommands; HELP for any word that is not one.

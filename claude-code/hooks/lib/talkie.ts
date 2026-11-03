@@ -3,11 +3,13 @@
 
 import type { EngineInterface } from 'claude-code'
 import { formatAddress, generateName } from './address.ts'
+import { cursorKey } from './cursor.ts'
 import { createRelay, type InboxMessage, type Relay } from './relay.ts'
 
 export interface Auth { token: string, email: string }
 export interface Identity { name: string, instanceId: string }
-export interface Options { serverUrl: string, autoDeliver: boolean }
+// autoReply: a turn a request started sends its final answer back to the request's sender.
+export interface Options { serverUrl: string, autoDeliver: boolean, autoReply: boolean }
 
 export interface Talkie {
   options: Options
@@ -25,6 +27,14 @@ export interface Talkie {
   backoffMs: number
   // The hop of the last message read from each sender, by replyKey, until the model answers it.
   hops: Map<string, number>
+  // Where the inbox was last read up to, kept in $.store so a restart reads on from there.
+  cursor?: string
+  // Requests submitted as prompts whose turn has not started yet, each with the text it was submitted as.
+  awaiting: Array<{ message: InboxMessage, text: string }>
+  // The request each running main-loop turn answers, by turn id.
+  turns: Map<string, InboxMessage>
+  // Requests already answered with reply_to, by id, so each gets one reply.
+  replied: Set<string>
 }
 
 const AUTH_KEY = 'auth'
@@ -47,8 +57,10 @@ export async function loadTalkie ($: EngineInterface, options: Options, cwd: str
   if (!stored) await $.store.set(identityKey(sessionId), identity)
   const auth = await $.store.get(AUTH_KEY) as Auth | undefined
   const pendingEmail = await $.store.get(PENDING_KEY) as string | undefined
+  const cursor = await $.store.get(cursorKey(identity)) as string | undefined
   const fresh = { isListening: false, held: [], context: [], seen: new Set<string>(), backoffMs: 0, hops: new Map<string, number>() }
-  return { options, sessionId, cwd, auth, identity, pendingEmail, ...fresh }
+  const replies = { awaiting: [], turns: new Map<string, InboxMessage>(), replied: new Set<string>() }
+  return { options, sessionId, cwd, auth, identity, pendingEmail, cursor, ...fresh, ...replies }
 }
 
 export async function saveAuth ($: EngineInterface, t: Talkie, auth: Auth | undefined): Promise<void> {
@@ -66,12 +78,14 @@ export async function savePending ($: EngineInterface, t: Talkie, email: string 
 
 export async function renameTo ($: EngineInterface, t: Talkie, name: string): Promise<void> {
   t.identity = { ...t.identity, name }
+  t.cursor = undefined
   await $.store.set(identityKey(t.sessionId), t.identity)
 }
 
-export function relayOf ($: EngineInterface, t: Talkie): Relay {
+// headers: extra ones for this client's calls, like an Idempotency-Key.
+export function relayOf ($: EngineInterface, t: Talkie, headers?: Record<string, string>): Relay {
   const fetch = (url: string, init?: Parameters<EngineInterface['http']['fetch']>[1]) => $.http.fetch(url, init)
-  return createRelay(fetch, { baseUrl: t.options.serverUrl, token: t.auth?.token })
+  return createRelay(fetch, { baseUrl: t.options.serverUrl, token: t.auth?.token, headers })
 }
 
 export function showStatus ($: EngineInterface, t: Talkie): void {

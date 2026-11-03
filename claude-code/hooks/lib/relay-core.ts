@@ -3,7 +3,8 @@
 export interface FetchInit { method?: string, headers?: Record<string, string>, body?: string }
 export type Fetch = (url: string, init?: FetchInit) => Promise<{ status: number, ok: boolean, text: string }>
 
-export interface RelayConfig { baseUrl: string, token?: string }
+// headers: extra ones on every call, like an Idempotency-Key that makes a retried send safe.
+export interface RelayConfig { baseUrl: string, token?: string, headers?: Record<string, string> }
 
 export type Result<T> = { ok: true, value: T } | { ok: false, status: number, error: string }
 
@@ -14,16 +15,17 @@ const parse = (text: string): Record<string, unknown> => {
 }
 
 // A JSON content type only with a body: the relay refuses one on an empty body.
-const headersFor = (token: string | undefined, hasBody: boolean): Record<string, string> => ({
+const headersFor = (config: RelayConfig, hasBody: boolean): Record<string, string> => ({
+  ...config.headers,
   ...(hasBody ? { 'content-type': 'application/json' } : {}),
-  ...(token ? { authorization: `Bearer ${token}` } : {})
+  ...(config.token ? { authorization: `Bearer ${config.token}` } : {})
 })
 
 export const createCall = (fetch: Fetch, config: RelayConfig): Call => {
   const base = config.baseUrl.replace(/\/+$/, '')
   return async <T>(method: string, path: string, body?: unknown): Promise<Result<T>> => {
     const hasBody = body !== undefined
-    const init = { method, headers: headersFor(config.token, hasBody), body: hasBody ? JSON.stringify(body) : undefined }
+    const init = { method, headers: headersFor(config, hasBody), body: hasBody ? JSON.stringify(body) : undefined }
     const res = await fetch(`${base}${path}`, init).catch(() => null)
     if (!res) return { ok: false, status: 0, error: 'unreachable' }
     const json = parse(res.text)

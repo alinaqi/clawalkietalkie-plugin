@@ -95,7 +95,8 @@ test('relay errors while polling back off and recover', async ($, on) => {
   await clock.advance(500)
   expect(relay.find('GET', '/v1/inbox')).toHaveLength(1)
   relay.override('GET /v1/inbox/happy-dog', { status: 200, body: { messages: [{ id: 'x1', from: 'cc:happy-cat', text: 'back', sentAt: 0 }] } })
-  await clock.advance(1000)
+  // The first retry waits 1 s, give or take its 20% jitter.
+  await clock.advance(1200)
   expect(seen.prompts).toHaveLength(1)
 })
 

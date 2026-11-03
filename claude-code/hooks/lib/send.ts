@@ -4,12 +4,17 @@ import type { EngineInterface } from 'claude-code'
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from './address.ts'
 import { SIGN_IN, why } from './actions.ts'
 import { replyHop } from './hops.ts'
-import type { MessageType, Result, Sent } from './relay.ts'
+import type { MessageType, Result, SendBody, Sent } from './relay.ts'
 import { relayOf, type Talkie } from './talkie.ts'
 
 // isAnswer: the model's send, which may answer what it read; the person's own sends start a fresh chain.
 // type: 'note' (the default) informs; 'request' asks the receiver to do something.
-export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string }
+// replyTo: the id of the received message this answers. key: an Idempotency-Key, so a retry never sends twice.
+export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string, replyTo?: string, key?: string }
+
+// A send with a key is retried at once when the relay is unreachable or failing; the key makes that safe.
+const ATTEMPTS = 3
+const isTransient = (res: Result<unknown>): boolean => !res.ok && (res.status === 0 || res.status >= 500)
 
 export const BLOCKED = 'Not sent: that agent doesn\'t accept messages from you (its owner\'s setting).'
 
@@ -23,7 +28,8 @@ const sent = (value: Sent, target: Target): string => {
   return `Sent to ${to}${value.online ? '.' : ' (offline now; delivered when it is back, within 24 h).'}`
 }
 
-const refused = (res: Extract<Result<unknown>, { ok: false }>, target: Target): string => {
+const refused = (res: Extract<Result<unknown>, { ok: false }>, target: Target, replyTo?: string): string => {
+  if (res.error === 'invalid_reply_to') return `Not sent: ${replyTo ?? 'that id'} is not a message this session received from ${addressOf(target)}.`
   if (res.error === 'not_shared') return `Not sent: this session is not shared in ${target.team ?? 'that team'}. Run /talkie share ${target.team ?? '<team>'} first.`
   if (res.error === 'blocked_by_receiver') return BLOCKED
   if (res.error === 'denied_by_policy') return `Not sent: the policy of ${target.team ?? 'that team'} does not allow this message.`
@@ -39,10 +45,19 @@ export async function sendMessage ($: EngineInterface, t: Talkie, out: Outgoing)
   if (!isMessageType(type)) return 'Not sent: the type is note or request.'
   const { name: from, instanceId } = t.identity
   const hop = out.isAnswer ? replyHop(t, target) : 0
-  const res = await relayOf($, t).send({ from, instanceId, to: formatTarget(target), text: out.text, hop, type })
+  const thread = out.replyTo ? { replyTo: out.replyTo } : {}
+  const res = await post($, t, { body: { from, instanceId, to: formatTarget(target), text: out.text, hop, type, ...thread }, key: out.key })
+  if (res.ok && out.replyTo) t.replied.add(out.replyTo)
   if (res.ok) return sent(res.value, target)
   if (res.status === 404) return unknown($, t, target)
-  return refused(res, target)
+  return refused(res, target, out.replyTo)
+}
+
+async function post ($: EngineInterface, t: Talkie, send: { body: SendBody, key?: string }): Promise<Result<Sent>> {
+  const relay = relayOf($, t, send.key ? { 'idempotency-key': send.key } : undefined)
+  let res = await relay.send(send.body)
+  for (let attempt = 1; send.key && attempt < ATTEMPTS && isTransient(res); attempt++) res = await relay.send(send.body)
+  return res
 }
 
 // Did-you-mean only for the person's own sessions: a team's names are not theirs to list here.

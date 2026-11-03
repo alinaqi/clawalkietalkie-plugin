@@ -3,13 +3,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Agent } from './agent.ts'
 import { detectKind } from './kind.ts'
+import { pollForever } from './poll.ts'
 
 export interface ServerOptions { kind?: string, poll?: boolean }
 
-const VERSION = '0.3.0'
-const WAIT_SECONDS = 25
-const GAP_MS = 250
-const ERROR_BACKOFF_MS = 5000
+const VERSION = '0.3.1'
 
 export const INSTRUCTIONS = [
   'clawalkietalkie connects this agent with the user\'s other coding agents (Claude Code, Codex, Copilot, Cursor, Gemini CLI, Grok Bot).',
@@ -34,13 +32,18 @@ const SEND_SHAPE = {
   to: z.string().describe('The address'),
   text: z.string().describe('The message, self-contained'),
   type: z.enum(['note', 'request']).optional().describe('note (the default) for information or status; request only when the user ' +
-    'asked the other agent to do something. A note never starts work there; a request starts it only as its owner allows.')
+    'asked the other agent to do something. A note never starts work there; a request starts it only as its owner allows.'),
+  reply_to: z.string().optional().describe('The id of the message this answers, when it answers one the inbox showed; ' +
+    'it threads the reply under that message. Only for a message from the same address.')
 }
+
+const sendArgs = (a: Record<string, unknown>) =>
+  ({ type: a.type === 'request' ? 'request' as const : 'note' as const, replyTo: typeof a.reply_to === 'string' ? a.reply_to : undefined })
 
 const registerTools = (server: McpServer, agent: Agent): void => {
   const tool = (name: string, description: string, shape: z.ZodRawShape, run: (args: Record<string, unknown>) => Promise<string>) =>
     server.registerTool(name, { description, inputSchema: shape }, async (args: Record<string, unknown>) => reply(await run(args)))
-  tool('send', SEND_DESCRIPTION, SEND_SHAPE, (a) => agent.send(String(a.to), String(a.text), a.type === 'request' ? 'request' : 'note'))
+  tool('send', SEND_DESCRIPTION, SEND_SHAPE, (a) => agent.send(String(a.to), String(a.text), sendArgs(a)))
   tool('set_status', 'Set what this agent is doing, shown in who and on the team board. Call it when you start, finish, or are blocked.', {
     state: z.enum(['working', 'blocked', 'idle', 'done']),
     task: z.string().describe('The task, 1–200 characters'),
@@ -53,18 +56,6 @@ const registerTools = (server: McpServer, agent: Agent): void => {
   tool('status', 'Show this agent\'s address, account and relay.', {}, () => agent.status())
   tool('login', 'Email the user a sign-in code.', { email: z.string().describe('The user\'s email') }, (a) => agent.login(String(a.email)))
   tool('verify', 'Finish signing in with the code from the email.', { code: z.string().describe('The 6-digit code') }, (a) => agent.verify(String(a.code)))
-}
-
-const pollForever = (server: McpServer, agent: Agent, isOpen: () => boolean): void => {
-  const tick = async (): Promise<void> => {
-    if (!isOpen()) return
-    const before = agent.pending()
-    const ok = await agent.pollOnce(agent.isSignedIn() ? WAIT_SECONDS : 0).then(() => true, () => false)
-    const arrived = agent.pending() - before
-    if (arrived > 0) await server.sendLoggingMessage({ level: 'notice', data: `📻 ${arrived} new message(s); call inbox.` }).catch(() => {})
-    setTimeout(() => { void tick() }, ok && agent.isSignedIn() ? GAP_MS : ERROR_BACKOFF_MS)
-  }
-  void tick()
 }
 
 export const createServer = (agent: Agent, options: ServerOptions = {}): McpServer => {

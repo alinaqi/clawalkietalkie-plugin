@@ -87,3 +87,19 @@ test('a request without a body carries no JSON content type', async () => {
     ['POST', undefined, undefined], ['DELETE', undefined, undefined], ['DELETE', undefined, undefined], ['GET', undefined, undefined]
   ])
 })
+
+test('poll reads on from a cursor, and answers the page with the next cursor', async () => {
+  const { fetch, seen } = fakeFetch(200, { messages: [], cursor: 'c 9' })
+  const res = await createRelay(fetch, BASE).poll('happy-dog', { instanceId: 'i', wait: 25, after: 'c 8' })
+  expect(res).toEqual({ ok: true, value: { messages: [], cursor: 'c 9' } })
+  expect(seen[0]?.url).toBe('https://relay.test/v1/inbox/happy-dog?instanceId=i&wait=25&after=c%208')
+  await createRelay(fetch, BASE).poll('happy-dog', { instanceId: 'i', wait: 0 })
+  expect(seen[1]?.url).toBe('https://relay.test/v1/inbox/happy-dog?instanceId=i&wait=0')
+})
+
+test('extra headers, like an Idempotency-Key, ride on every call', async () => {
+  const headers: Array<Record<string, string> | undefined> = []
+  const fetch: Fetch = async (url, init) => { headers.push(init?.headers); return { status: 201, ok: true, text: '{}' } }
+  await createRelay(fetch, { ...BASE, headers: { 'idempotency-key': 'reply-m1' } }).send({ from: 'a', instanceId: 'i', to: 'b', text: 'hi', replyTo: 'm1' })
+  expect(headers[0]).toMatchObject({ 'idempotency-key': 'reply-m1', authorization: 'Bearer tok' })
+})

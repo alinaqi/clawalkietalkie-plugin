@@ -1,6 +1,7 @@
 import type { Register } from 'claude-code'
 import { setStatus, who } from './lib/actions.ts'
 import { NOT_READY, onPrompt, onSession, type Box, type On } from './lib/lifecycle.ts'
+import { onTurns } from './lib/replies.ts'
 import { sendMessage } from './lib/send.ts'
 import type { Options } from './lib/talkie.ts'
 
@@ -8,13 +9,15 @@ const FAILED = { result: 'clawalkietalkie hit an error; /talkie status shows its
 
 const readOptions = (options: Readonly<Record<string, unknown>>): Options => ({
   serverUrl: typeof options.serverUrl === 'string' && options.serverUrl ? options.serverUrl : 'https://api.clawalkietalkie.com',
-  autoDeliver: options.autoDeliver !== false
+  autoDeliver: options.autoDeliver !== false,
+  autoReply: options.autoReply !== false
 })
+
+const stringOr = (value: unknown): string | undefined => value === undefined ? undefined : String(value)
 
 function onTools (on: On, box: Box): void {
   on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
-    const type = e.type === undefined ? undefined : String(e.type)
-    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type, isAnswer: true }
+    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type: stringOr(e.type), replyTo: stringOr(e.reply_to), isAnswer: true }
     return { result: box.talkie ? await sendMessage($, box.talkie, out) : NOT_READY }
   }).catch(() => FAILED)
   on('tool.call', { tool: 'mcp__clawalkietalkie__who' }, async ($) =>
@@ -27,5 +30,6 @@ export const register: Register = (on, rawOptions) => {
   const box: Box = { options: readOptions(rawOptions) }
   onSession(on, box)
   onPrompt(on, box)
+  onTurns(on, box)
   onTools(on, box)
 }

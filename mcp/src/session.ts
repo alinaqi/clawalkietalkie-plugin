@@ -1,7 +1,8 @@
 // Signing in and holding an address.
 import { basename } from 'node:path'
 import { parseAddress, type Kind } from '../../claude-code/hooks/lib/address.ts'
-import { identityFor, renameIdentity } from './config.ts'
+import { identityFor, loadCursor, renameIdentity } from './config.ts'
+import { cursorKey } from './cursor.ts'
 import { freshName, identityKey, relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
 const claim = (s: AgentState, name: string) =>
@@ -9,6 +10,8 @@ const claim = (s: AgentState, name: string) =>
 
 const keepName = (s: AgentState, name: string): void => {
   s.identity = { ...s.identity, name }
+  s.cursor = undefined
+  s.unacked = []
   renameIdentity(s.deps.dir, identityKey(s), s.identity)
 }
 
@@ -27,6 +30,7 @@ export const connect = async (s: AgentState): Promise<string> => {
 export const start = async (s: AgentState, kind: Kind): Promise<string> => {
   s.kind = kind
   s.identity = identityFor(s.deps.dir, identityKey(s))
+  s.cursor = loadCursor(s.deps.dir, cursorKey(s))
   return s.auth ? connect(s) : SIGN_IN
 }
 

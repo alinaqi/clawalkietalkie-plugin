@@ -2,20 +2,31 @@
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from '../../claude-code/hooks/lib/address.ts'
 import { boardUrl, type MessageType, type Result, type Sent } from '../../claude-code/hooks/lib/relay.ts'
 import { describeWho, parseStatus, statusText } from '../../claude-code/hooks/lib/who.ts'
+import { ackShown, keepCursor } from './cursor.ts'
 import { formatInbox } from './format.ts'
 import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
-// Fetches what waits (long-polling up to `waitSeconds`) into the buffer, once per message.
-export const pollOnce = async (s: AgentState, waitSeconds = 0): Promise<void> => {
-  if (!s.auth) return
-  const res = await relayOf(s).inbox(s.identity.name, s.identity.instanceId, waitSeconds)
+// Fetches what waits after the cursor (long-polling up to `waitSeconds`) into the buffer, once per message.
+// False when the relay refused or failed; a cursor it rejects is dropped and the inbox read from the start.
+export const pollOnce = async (s: AgentState, waitSeconds = 0): Promise<boolean> => {
+  if (!s.auth) return true
+  const { identity, auth } = s
+  const res = await relayOf(s).poll(identity.name, { instanceId: identity.instanceId, wait: waitSeconds, after: s.cursor })
+  // Renamed or signed out meanwhile: the answer is the old identity's, not this one's.
+  if (s.identity !== identity || s.auth !== auth) return true
+  if (!res.ok && res.status === 400 && s.cursor) {
+    keepCursor(s, undefined)
+    return pollOnce(s, waitSeconds)
+  }
   if (!res.ok) {
     if (res.status === 401) setAuth(s, undefined)
-    return
+    return false
   }
-  const fresh = res.value.filter((m) => !s.seen.has(m.id))
+  const fresh = (res.value.messages ?? []).filter((m) => !s.seen.has(m.id))
   for (const message of fresh) s.seen.add(message.id)
   s.buffer.push(...fresh)
+  keepCursor(s, res.value.cursor ?? s.cursor)
+  return true
 }
 
 export const inbox = async (s: AgentState): Promise<string> => {
@@ -23,7 +34,8 @@ export const inbox = async (s: AgentState): Promise<string> => {
   await pollOnce(s, 0)
   const taken = s.buffer.splice(0)
   for (const message of taken) s.hops.set(hopKey(parseTarget(message.from)) ?? message.from, message.hop ?? 0)
-  if (taken.length > 0) await relayOf(s).ack(s.identity.name, s.identity.instanceId, taken.map((m) => m.id))
+  await ackShown(s, taken.map((m) => m.id))
+  keepCursor(s, s.cursor)
   return formatInbox(taken, selfOf(s))
 }
 
@@ -63,7 +75,8 @@ const refused = (s: AgentState, res: Extract<Result<unknown>, { ok: false }>, te
   return res.status === 429 ? 'Not sent: 20 messages in the last minute; wait a moment.' : `Not sent: ${why(res)}.`
 }
 
-export interface Outgoing { text: string, type: MessageType }
+// replyTo: the id of a received message this answers, threading it there.
+export interface Outgoing { text: string, type: MessageType, replyTo?: string }
 
 // type: 'note' informs; 'request' asks the receiver to do something, as its owner's settings allow.
 export const send = async (s: AgentState, to: string, out: Outgoing): Promise<string> => {
@@ -73,6 +86,7 @@ export const send = async (s: AgentState, to: string, out: Outgoing): Promise<st
   const { name: from, instanceId } = s.identity
   const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), ...out, hop: hopFor(s, hopKey(target)!) })
   if (res.ok) return sent(res.value, target)
+  if (res.error === 'invalid_reply_to') return `Not sent: ${out.replyTo} is not a message this agent received from ${addressOf(target)}.`
   return res.status === 404 ? unknown(s, target, to.trim()) : refused(s, res, target.team)
 }
 
