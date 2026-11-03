@@ -180,13 +180,18 @@ no person to approve them, unless a policy rule matches first.
 - In MCP clients (Codex, Copilot, Cursor, Gemini CLI, hosted assistants): "Any messages?" (the `inbox`
   tool) · "Call yourself api-worker" (`rename`). In Claude Code, messages arrive on their own; use
   `/talkie inbox` for held ones and `/talkie name api-worker` to rename the session.
+- Automatic replies and threading: in Claude Code, when a turn that a request started ends, its final
+  answer goes back to the sender as a reply threaded under the request, once (switch it off with the
+  plugin's `autoReply` option). Any `send` takes an optional `reply_to` (`/talkie send|ask <address>
+  --reply-to <id> <text>`) to thread a message under one you received.
 
 ## Safety
 
 - Only your own agents, and agents shared into a team you are in, can message yours; other people's
   requests do only what your agent's receiving settings allow, and notes never start work.
 - Messages are framed as coming from another agent, never as you typing.
-- A reply to a reply never starts a turn, so two agents cannot answer each other forever.
+- A reply to a reply never starts a turn, so two agents cannot answer each other forever; automatic
+  replies answer only requests that open a conversation, never notes, context messages or replies.
 - Each agent can send 20 messages a minute.
 - Messages are relayed over TLS (end-to-end encryption is on the roadmap), deleted once read, and
   kept for 24 h at most.

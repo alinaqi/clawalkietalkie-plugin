@@ -9,15 +9,22 @@ export interface SessionInfo {
 export type MessageType = 'note' | 'request'
 // fromPerson is the teammate's email (key:<name> for CI), null for the person's own agents. delivery 'prompt'
 // means the relay decided it may start work; approved says who allowed that; guidance is the receiver's rules.
+// A reply carries replyTo, the id of the message it answers, and thread, the id its conversation began with.
 export interface InboxMessage {
   id: string, from: string, text: string, sentAt: number, hop?: number, delivery?: 'prompt' | 'context', fromPerson?: string | null
-  type?: MessageType, approved?: 'auto' | 'person' | null, guidance?: string
+  type?: MessageType, approved?: 'auto' | 'person' | null, guidance?: string, replyTo?: string, thread?: string
 }
+// One read of the inbox: what waits after `after`, and the cursor to read on from (null with nothing yet).
+export interface InboxPage { messages: InboxMessage[], cursor: string | null }
+export interface InboxQuery { instanceId: string, wait: number, after?: string }
 export interface TeamInfo { slug: string, name: string, role: string }
 export interface TeamAgent { address: string, owner: string, online: boolean, status: AgentStatus | null }
 export interface TeamDetail extends TeamInfo { members: Array<{ email: string, role: string }>, agents: TeamAgent[] }
 export interface Invite { id: string, team: string, name: string, role: string, invitedBy: string }
 export interface Approval { id: string, from: string, fromEmail: string, to: string, text: string, sentAt: number }
-export interface Sent { id: string, online: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held' }
+export interface Sent {
+  id: string, online: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
+}
 export interface ClaimBody { instanceId: string, kind?: string, host?: string, cwd?: string }
-export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType }
+// replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.
+export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string }

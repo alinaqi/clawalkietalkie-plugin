@@ -1,7 +1,7 @@
 {
   "name": "clawalkietalkie",
   "displayName": "Clawalkie Talkie",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Tailscale for Claude Code: give each session a cc: address and message your other sessions on any machine.",
   "author": {
     "name": "alinaqi",
@@ -20,6 +20,12 @@
       "type": "boolean",
       "title": "Deliver messages as prompts",
       "description": "On: an incoming message starts a turn in this session. Off: a toast only; read with /talkie inbox.",
+      "default": true
+    },
+    "autoReply": {
+      "type": "boolean",
+      "title": "Reply automatically",
+      "description": "On: when a turn that an incoming request started ends, its final answer goes back to the sender as a threaded reply. Off: the agent answers with the send tool.",
       "default": true
     }
   }

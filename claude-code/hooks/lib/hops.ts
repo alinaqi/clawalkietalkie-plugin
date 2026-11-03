@@ -3,17 +3,28 @@
 
 import { parseTarget, type Target } from './address.ts'
 import { frameIncoming } from './frame.ts'
+import { notToAct } from './incoming.ts'
 import type { InboxMessage } from './relay.ts'
 import type { Talkie } from './talkie.ts'
 
 // The name for the person's own agents, name@team for a teammate's.
 export const replyKey = (target: Target): string => target.team ? `${target.name}@${target.team}` : target.name
 
+// Whether the turn this message starts answers its sender by itself: a request delivered as a prompt that
+// opens a conversation; never a note, a context message or a reply, so automatic replies cannot loop.
+export const autoReplies = (t: Talkie, message: InboxMessage): boolean =>
+  t.options.autoReply && !notToAct(message) && (message.hop ?? 0) === 0 && !message.replyTo
+
+// Called as a request is submitted as a prompt, with the text it is submitted as; replies.ts answers it.
+export const expectReply = (t: Talkie, message: InboxMessage, text: string): void => {
+  if (autoReplies(t, message)) t.awaiting.push({ message, text })
+}
+
 // Frames a message for the model or the person to read, noting its hop.
 export const readMessage = (t: Talkie, message: InboxMessage): string => {
   const from = parseTarget(message.from)
   t.hops.set(from ? replyKey(from) : message.from, message.hop ?? 0)
-  return frameIncoming(message, t.identity.name)
+  return frameIncoming(message, t.identity.name, autoReplies(t, message))
 }
 
 export const replyHop = (t: Talkie, target: Target): number => {

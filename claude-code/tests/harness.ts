@@ -25,9 +25,18 @@ export const setup = (on: On, store: Record<string, unknown> = {}) => {
   on('prompt.submit', ($, e) => { seen.prompts.push(e.text); seen.contexts.push([...(e.context ?? [])]); return { text: e.text } })
   on('ui.status', ($, e) => { seen.statuses.push(e.text); return { value: undefined } })
   on('ui.toast', ($, e) => { seen.toasts.push(e.text); return { value: undefined } })
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
   return { relay, seen, clock }
 }
 
 export const start = ($: Engine) => $.session.start({ cwd: '/work/web', surface: 'terminal', isInteractive: true })
 export const talkie = async ($: Engine, args: string) => (await $.command.run({ command: 'talkie', args, ...TYPED })).text ?? ''
 export const typed = ($: Engine, text: string) => $.prompt.submit({ text, origin: { kind: 'composer' }, wait: false })
+
+// One main-loop turn, as the engine runs it: started with `text`, ended with `answer`.
+export const runTurn = async ($: Engine, turn: { text: string, answer: string, id?: string }) => {
+  const turnId = turn.id ?? 'turn-1'
+  await $.turn.start({ text: turn.text, turnId })
+  return $.turn.complete({ answer: turn.answer, turnId, durationMs: 10, isAborted: false, reason: 'answer' })
+}

@@ -20,6 +20,11 @@ export const SEND_TOOL: ToolSpec = {
         enum: ['note', 'request'],
         description: 'note (the default) for information or status; request only when the user asked the other agent to do something. ' +
           'A note never starts work there; a request starts it only as its owner allows.'
+      },
+      reply_to: {
+        type: 'string',
+        description: 'The id of the message this answers, when it answers one this session received; ' +
+          'it threads the reply under that message. Only for a message from the same address.'
       }
     },
     required: ['to', 'text']

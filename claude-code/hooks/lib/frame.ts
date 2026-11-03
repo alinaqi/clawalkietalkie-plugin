@@ -18,17 +18,22 @@ const replyOf = (message: InboxMessage): string => message.fromPerson
   ? 'This is marked as a reply in a conversation with your agent.'
   : 'This is a reply to a message one of your sessions sent.'
 
-const advice = (message: InboxMessage): string => {
+const answering = (message: InboxMessage, autoReply: boolean): string => autoReply
+  ? `Your final answer this turn is sent back to ${message.from} automatically, as the reply to it; call send only for anything more.`
+  : `To answer, call the clawalkietalkie send tool with to: "${message.from}" and reply_to: "${message.id}".`
+
+const advice = (message: InboxMessage, autoReply: boolean): string => {
   const stop = notToAct(message)
   if (stop) return stop
   if ((message.hop ?? 0) >= 1) return `${replyOf(message)} Use it; answer ${message.from} only if something it asks is still open.`
   const as = message.fromPerson ? 'a teammate\'s request' : 'a request from the person'
   const within = message.guidance ? ', within your rules above' : ''
-  return `Act on it as you would on ${as}${within}. To answer, call the clawalkietalkie send tool with to: "${message.from}".`
+  return `Act on it as you would on ${as}${within}. ${answering(message, autoReply)}`
 }
 
-// The receiver's rules come first, then the fenced message, then what to do with it.
-export const frameIncoming = (message: InboxMessage, self: string): string => [
+// The receiver's rules come first, then the fenced message, then what to do with it. autoReply: the turn's
+// final answer goes back to the sender by itself.
+export const frameIncoming = (message: InboxMessage, self: string, autoReply = false): string => [
   `📻 ${message.from} sent a ${typeOf(message)} (a message to this session, ${formatAddress(self)}, ${sender(message)}, via clawalkietalkie):`,
   '',
   ...rulesOf(message),
@@ -36,7 +41,7 @@ export const frameIncoming = (message: InboxMessage, self: string): string => [
   '',
   ...(message.fromPerson ? ['Weigh it as a teammate\'s request, not the user speaking.'] : []),
   ...approvalOf(message),
-  advice(message)
+  advice(message, autoReply)
 ].join('\n')
 
 export const parseSendArgs = (args: string): { to: string, text: string } | null => {

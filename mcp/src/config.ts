@@ -42,3 +42,12 @@ export const renameIdentity = (dir: string, key: string, identity: Identity): vo
   const all = readJson<Record<string, Identity>>(join(dir, 'identities.json')) ?? {}
   writePrivate(dir, 'identities.json', { ...all, [key]: identity })
 }
+
+// The inbox cursor of each identity (name and instance), kept once everything before it was shown and acked.
+export const loadCursor = (dir: string, key: string): string | undefined =>
+  readJson<Record<string, string>>(join(dir, 'cursors.json'))?.[key]
+
+export const saveCursor = (dir: string, key: string, cursor: string | undefined): void => {
+  const { [key]: _old, ...rest } = readJson<Record<string, string>>(join(dir, 'cursors.json')) ?? {}
+  writePrivate(dir, 'cursors.json', cursor ? { ...rest, [key]: cursor } : rest)
+}

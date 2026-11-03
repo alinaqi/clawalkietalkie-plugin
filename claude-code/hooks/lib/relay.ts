@@ -7,7 +7,7 @@ import { teamCalls } from './relay-teams.ts'
 
 export type { Fetch, FetchInit, RelayConfig, Result } from './relay-core.ts'
 export type {
-  AgentState, AgentStatus, Approval, ClaimBody, InboxMessage, Invite, MessageType, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
+  AgentState, AgentStatus, Approval, ClaimBody, InboxMessage, InboxPage, InboxQuery, Invite, MessageType, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
 } from './relay-types.ts'
 
 export const createRelay = (fetch: Fetch, config: RelayConfig) => {
