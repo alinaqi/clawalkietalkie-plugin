@@ -1,4 +1,4 @@
-// The tools the model calls: send, who and set_status. Approving a held message is never one of them:
+// The tools the model calls: send, who, set_status and discard. Approving a held message is never one of them:
 // only the person decides, with /talkie approve or on the board.
 
 import type { ToolSpec } from 'claude-code'
@@ -7,7 +7,9 @@ export const SEND_TOOL: ToolSpec = {
   name: 'send',
   description: 'Send a message to another of the user\'s coding agents (cc:, cx:, …) by its clawalkietalkie address, ' +
     'like cc:happy-dog or cx:review-bot, or to a teammate\'s agent by its team address, like cc:api@acme. ' +
-    'Use it whenever the user asks to pass, tell, send or report something to an address. ' +
+    'Use it whenever the user asks to pass, tell, send or report something to an address, and on your own when another ' +
+    'agent\'s work needs what you have. Send only to an agent whose project (who shows it) the message concerns, and name ' +
+    'that project in about; never send to an agent working on something else. ' +
     'Write the text so the receiving session can act on it alone: it does not see this conversation. ' +
     'A message is a note (information) unless the user asked the other agent to do something.',
   inputSchema: {
@@ -25,7 +27,8 @@ export const SEND_TOOL: ToolSpec = {
         type: 'string',
         description: 'The id of the message this answers, when it answers one this session received; ' +
           'it threads the reply under that message. Only for a message from the same address.'
-      }
+      },
+      about: { type: 'string', description: 'The project the message concerns, as who shows it; the relay refuses it for an agent on another' }
     },
     required: ['to', 'text']
   },
@@ -54,6 +57,18 @@ export const SET_STATUS_TOOL: ToolSpec = {
       waitingFor: { type: 'string', description: 'The address or person it waits for, if any' }
     },
     required: ['state', 'task']
+  },
+  isDeferred: false
+}
+
+export const DISCARD_TOOL: ToolSpec = {
+  name: 'discard',
+  description: 'Drop clawalkietalkie messages this session received that are not about its work, by their ids: ' +
+    'their senders see them as discarded. Do not act on or reply to a discarded message.',
+  inputSchema: {
+    type: 'object',
+    properties: { ids: { type: 'array', items: { type: 'string' }, description: 'The message ids' } },
+    required: ['ids']
   },
   isDeferred: false
 }

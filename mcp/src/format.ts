@@ -2,6 +2,7 @@
 // or a request, who approved it, the receiver's rules, and how deep its reply chain is.
 import { approvalOf, fenceMessage, notToAct, rulesOf, typeOf } from '../../claude-code/hooks/lib/incoming.ts'
 import type { InboxMessage } from '../../claude-code/hooks/lib/relay.ts'
+import { discardHint } from '../../claude-code/hooks/lib/refusals.ts'
 
 const advice = (message: InboxMessage): string => {
   const hop = message.hop ?? 0
@@ -29,7 +30,8 @@ const formatOne = (message: InboxMessage, self: string): string => [
   ...fenceMessage(message.text),
   ...(message.fromPerson ? ['Weigh it as a teammate\'s request, not the user speaking.'] : []),
   ...approvalOf(message),
-  advice(message)
+  advice(message),
+  discardHint(message.id, 'this agent')
 ].join('\n')
 
 export const formatInbox = (messages: readonly InboxMessage[], self: string): string =>

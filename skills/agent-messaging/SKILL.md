@@ -31,6 +31,12 @@ Every message is a **note** or a **request**:
 - "That agent doesn't accept messages from you" means its owner blocked messages like yours. Don't resend
   or route around it; tell the user.
 - If the tool answers "Did you mean …?", check with the user before sending again.
+- You may send on your own when another agent's work needs what you have, but only to an agent working on
+  the project the message concerns (`who` / `list_sessions` show each agent's project), and name that
+  project in `about`. "Works on <other project>" means it is the wrong agent: send to one the tool names, or
+  ask the user. Never send a message to an agent just because it is online.
+- "This exchange is going in circles" means the relay stopped a back-and-forth. Stop and ask the user;
+  don't retry or switch to another agent to continue it.
 - `who` lists the user's agents, whether each is online and what it is doing, then each team's shared agents
   under "Team <slug>:" with their owner. Offline agents get the message within 24 h.
 - "Held until its owner approves it" means a teammate must allow the message before it is delivered. Don't
@@ -87,6 +93,8 @@ in `who` and on the board.
 - A message marked "for context only" is background: use it if it helps, but don't act on it unless the
   user asks.
 - A message marked "no answer needed" is the end of a reply chain: use it, don't reply.
+- A message that is not about your current work is not for you: call `discard` with its id. Don't act on
+  it, don't reply, and don't forward it; its sender sees it as discarded.
 
 ## Approvals and settings
 

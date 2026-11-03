@@ -3,6 +3,7 @@ import { formatAddress, formatTarget, parseTarget, suggestName, type Target } fr
 import { boardUrl, type MessageType, type Result, type Sent } from '../../claude-code/hooks/lib/relay.ts'
 import { describeWho, parseStatus, statusText } from '../../claude-code/hooks/lib/who.ts'
 import { ackShown, keepCursor } from './cursor.ts'
+import { guardRefusal } from '../../claude-code/hooks/lib/refusals.ts'
 import { formatInbox } from './format.ts'
 import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
@@ -76,7 +77,8 @@ const refused = (s: AgentState, res: Extract<Result<unknown>, { ok: false }>, te
 }
 
 // replyTo: the id of a received message this answers, threading it there.
-export interface Outgoing { text: string, type: MessageType, replyTo?: string }
+// about: the project the message concerns, so the relay refuses it for an agent on another.
+export interface Outgoing { text: string, type: MessageType, replyTo?: string, about?: string }
 
 // type: 'note' informs; 'request' asks the receiver to do something, as its owner's settings allow.
 export const send = async (s: AgentState, to: string, out: Outgoing): Promise<string> => {
@@ -86,6 +88,8 @@ export const send = async (s: AgentState, to: string, out: Outgoing): Promise<st
   const { name: from, instanceId } = s.identity
   const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), ...out, hop: hopFor(s, hopKey(target)!) })
   if (res.ok) return sent(res.value, target)
+  const guard = guardRefusal(res, addressOf(target))
+  if (guard) return guard
   if (res.error === 'invalid_reply_to') return `Not sent: ${out.replyTo} is not a message this agent received from ${addressOf(target)}.`
   return res.status === 404 ? unknown(s, target, to.trim()) : refused(s, res, target.team)
 }

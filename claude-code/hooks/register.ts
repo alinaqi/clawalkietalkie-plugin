@@ -1,6 +1,7 @@
 import type { Register } from 'claude-code'
 import { setStatus, who } from './lib/actions.ts'
 import { NOT_READY, onPrompt, onSession, type Box, type On } from './lib/lifecycle.ts'
+import { discardMessages, idsOf } from './lib/discard.ts'
 import { onTurns } from './lib/replies.ts'
 import { sendMessage } from './lib/send.ts'
 import type { Options } from './lib/talkie.ts'
@@ -17,9 +18,11 @@ const stringOr = (value: unknown): string | undefined => value === undefined ? u
 
 function onTools (on: On, box: Box): void {
   on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
-    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type: stringOr(e.type), replyTo: stringOr(e.reply_to), isAnswer: true }
+    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type: stringOr(e.type), replyTo: stringOr(e.reply_to), about: stringOr(e.about), isAnswer: true }
     return { result: box.talkie ? await sendMessage($, box.talkie, out) : NOT_READY }
   }).catch(() => FAILED)
+  on('tool.call', { tool: 'mcp__clawalkietalkie__discard' }, async ($, e) =>
+    ({ result: box.talkie ? await discardMessages($, box.talkie, idsOf(e.ids)) : NOT_READY })).catch(() => FAILED)
   on('tool.call', { tool: 'mcp__clawalkietalkie__who' }, async ($) =>
     ({ result: box.talkie ? await who($, box.talkie) : NOT_READY })).catch(() => FAILED)
   on('tool.call', { tool: 'mcp__clawalkietalkie__set_status' }, async ($, e) =>
