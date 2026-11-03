@@ -17,5 +17,8 @@ export const sessionCalls = (call: Call) => ({
   // The inbox read on from a cursor; messages stay until acked, so a lost answer loses nothing.
   poll: (name: string, query: InboxQuery) => call<InboxPage>('GET', inboxPath(name, query)),
   ack: (name: string, instanceId: string, ids: readonly string[]) =>
-    call<object>('POST', `/v1/inbox/${enc(name)}/ack`, { instanceId, ids })
+    call<object>('POST', `/v1/inbox/${enc(name)}/ack`, { instanceId, ids }),
+  // Messages not about this session's work: gone, and their senders see them as discarded.
+  discard: (name: string, instanceId: string, ids: readonly string[]) =>
+    call<object>('POST', `/v1/inbox/${enc(name)}/discard`, { instanceId, ids })
 })

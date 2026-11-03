@@ -1,11 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 import { SEND, SIGNED_IN, WHO, setup, start, talkie } from './harness.ts'
 
-test('registers /talkie and the send and who tools, and asks to sign in', async ($, on) => {
+test('registers /talkie and the send, who, set_status and discard tools, and asks to sign in', async ($, on) => {
   const { seen } = setup(on)
   await start($)
   expect(seen.commands).toEqual(['talkie'])
-  expect(seen.tools.sort()).toEqual(['send', 'set_status', 'who'])
+  expect(seen.tools.sort()).toEqual(['discard', 'send', 'set_status', 'who'])
   expect(seen.statuses.at(-1)).toBe('📻 /talkie login')
 })
 

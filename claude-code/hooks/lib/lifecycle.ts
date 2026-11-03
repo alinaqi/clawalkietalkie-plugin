@@ -7,7 +7,7 @@ import { folderName } from './frame.ts'
 import { readMessage } from './hops.ts'
 import { stopListening } from './listener.ts'
 import { loadTalkie, relayOf, showStatus, type Options, type Talkie } from './talkie.ts'
-import { SEND_TOOL, SET_STATUS_TOOL, WHO_TOOL } from './tools.ts'
+import { DISCARD_TOOL, SEND_TOOL, SET_STATUS_TOOL, WHO_TOOL } from './tools.ts'
 
 export type On = Parameters<Register>[0]
 // The session's state, set once session.start has loaded it.
@@ -28,6 +28,7 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
   await $.tool.register(SEND_TOOL)
   await $.tool.register(WHO_TOOL)
   await $.tool.register(SET_STATUS_TOOL)
+  await $.tool.register(DISCARD_TOOL)
   const talkie = await loadTalkie($, options, folderName(cwd))
   if (talkie.auth) await connect($, talkie)
   else showStatus($, talkie)

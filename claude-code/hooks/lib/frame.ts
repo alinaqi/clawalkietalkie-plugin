@@ -3,6 +3,7 @@
 import { formatAddress, formatTarget, parseTarget } from './address.ts'
 import { approvalOf, fenceMessage, notToAct, rulesOf, typeOf } from './incoming.ts'
 import type { InboxMessage } from './relay.ts'
+import { discardHint } from './refusals.ts'
 
 export { CONTEXT_ONLY, NOTE_ONLY } from './incoming.ts'
 
@@ -41,7 +42,8 @@ export const frameIncoming = (message: InboxMessage, self: string, autoReply = f
   '',
   ...(message.fromPerson ? ['Weigh it as a teammate\'s request, not the user speaking.'] : []),
   ...approvalOf(message),
-  advice(message, autoReply)
+  advice(message, autoReply),
+  discardHint(message.id, 'this session')
 ].join('\n')
 
 export const parseSendArgs = (args: string): { to: string, text: string } | null => {

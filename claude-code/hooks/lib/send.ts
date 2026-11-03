@@ -4,13 +4,15 @@ import type { EngineInterface } from 'claude-code'
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from './address.ts'
 import { SIGN_IN, why } from './actions.ts'
 import { replyHop } from './hops.ts'
+import { guardRefusal } from './refusals.ts'
 import type { MessageType, Result, SendBody, Sent } from './relay.ts'
 import { relayOf, type Talkie } from './talkie.ts'
 
 // isAnswer: the model's send, which may answer what it read; the person's own sends start a fresh chain.
 // type: 'note' (the default) informs; 'request' asks the receiver to do something.
 // replyTo: the id of the received message this answers. key: an Idempotency-Key, so a retry never sends twice.
-export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string, replyTo?: string, key?: string }
+// about: the project the message concerns, so the relay refuses it for an agent on another.
+export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string, replyTo?: string, key?: string, about?: string }
 
 // A send with a key is retried at once when the relay is unreachable or failing; the key makes that safe.
 const ATTEMPTS = 3
@@ -32,6 +34,8 @@ const refused = (res: Extract<Result<unknown>, { ok: false }>, target: Target, r
   if (res.error === 'invalid_reply_to') return `Not sent: ${replyTo ?? 'that id'} is not a message this session received from ${addressOf(target)}.`
   if (res.error === 'not_shared') return `Not sent: this session is not shared in ${target.team ?? 'that team'}. Run /talkie share ${target.team ?? '<team>'} first.`
   if (res.error === 'blocked_by_receiver') return BLOCKED
+  const guard = guardRefusal(res, addressOf(target))
+  if (guard) return guard
   if (res.error === 'denied_by_policy') return `Not sent: the policy of ${target.team ?? 'that team'} does not allow this message.`
   if (res.status === 429) return 'Not sent: this session sent 20 messages in the last minute; wait a moment.'
   return `Not sent: ${why(res)}.`
@@ -45,8 +49,8 @@ export async function sendMessage ($: EngineInterface, t: Talkie, out: Outgoing)
   if (!isMessageType(type)) return 'Not sent: the type is note or request.'
   const { name: from, instanceId } = t.identity
   const hop = out.isAnswer ? replyHop(t, target) : 0
-  const thread = out.replyTo ? { replyTo: out.replyTo } : {}
-  const res = await post($, t, { body: { from, instanceId, to: formatTarget(target), text: out.text, hop, type, ...thread }, key: out.key })
+  const extra = { ...(out.replyTo ? { replyTo: out.replyTo } : {}), ...(out.about ? { about: out.about } : {}) }
+  const res = await post($, t, { body: { from, instanceId, to: formatTarget(target), text: out.text, hop, type, ...extra }, key: out.key })
   if (res.ok && out.replyTo) t.replied.add(out.replyTo)
   if (res.ok) return sent(res.value, target)
   if (res.status === 404) return unknown($, t, target)

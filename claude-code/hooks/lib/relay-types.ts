@@ -27,4 +27,4 @@ export interface Sent {
 }
 export interface ClaimBody { instanceId: string, kind?: string, host?: string, cwd?: string }
 // replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.
-export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string }
+export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string, about?: string }

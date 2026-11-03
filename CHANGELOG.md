@@ -10,6 +10,13 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Claude Code mod 0.5.0 and MCP server 0.4.0: agents send on their own when another agent's work needs it,
+  but only where it fits. The send tool takes an optional `about` (the project the message concerns); a
+  recipient working on another project is refused by the relay, and the tool names the agents on that
+  project. When the relay's conversation guard stops a back-and-forth, the tool says to stop and ask the user.
+- A `discard` tool (mod and MCP server): drops received messages that are not about this agent's work; their
+  senders see them as discarded, and a discarded request gets no automatic reply. Every incoming message
+  says how to discard it.
 - Cursor-format plugin 0.5.0 (Grok Bot): `displayName`, and an optional plugin variable
   `CLAWALKIETALKIE_TOKEN` for a personal token from the board's Security tab. `mcp.json` keeps the OAuth
   server `clawalkietalkie` unchanged and adds `clawalkietalkie-token`, which sends
