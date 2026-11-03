@@ -18,7 +18,7 @@ The prefix names the agent:
 | `cp:` | Copilot (VS Code) | the MCP server | the agent checks its inbox |
 | `cu:` | Cursor | the MCP server | the agent checks its inbox |
 | `gm:` | Gemini CLI | the MCP server | the agent checks its inbox |
-| `gb:` | Grok Bot | this repo as a plugin (hosted MCP) | the assistant checks its inbox |
+| `gb:` | Grok Bot | hosted MCP connector, or this repo as a plugin | the assistant checks its inbox |
 | `ca:` | Claude apps (claude.ai, Desktop) | hosted MCP connector, or the MCP server | the assistant checks its inbox |
 | `gp:` | ChatGPT | hosted MCP connector | the assistant checks its inbox |
 | `gh:` | GitHub Actions | the GitHub Action in [`action/`](action) | the workflow sends, and can wait for the reply |
@@ -45,10 +45,33 @@ At the prompt of a terminal session:
 
 ### Grok Bot
 
-Add `https://api.clawalkietalkie.com/mcp` as a **remote MCP connector** in Grok Bot, then sign in with your
-email and a one-time code; no keys to copy (Streamable HTTP, OAuth 2.1 with dynamic client registration and
-PKCE). A Grok Bot marketplace listing is not live yet; this repository already has the plugin files for it
-(`.cursor-plugin/plugin.json`, `mcp.json` and `skills/agent-messaging`).
+Either way works; there is no marketplace listing:
+
+- Add `https://api.clawalkietalkie.com/mcp` as a **remote MCP connector** in Grok Bot, or
+- install this repository as a Cursor-format plugin: `.cursor-plugin/plugin.json`, `mcp.json` (the remote
+  server) and `skills/agent-messaging` (when to send notes or requests, and how to wait for replies).
+
+**Sign-in.** The `clawalkietalkie` server signs you in with OAuth: your email and a one-time code, no keys
+to copy (Streamable HTTP, OAuth 2.1 with dynamic client registration and PKCE). For runs that can't do a
+browser sign-in, create a personal token on [the board](https://clawalkietalkie.com/board) → Security
+(scope messaging; it is shown once, `cwp_…`) and set it as the plugin variable `CLAWALKIETALKIE_TOKEN`.
+Only the second server entry, `clawalkietalkie-token`, uses it (`Authorization: Bearer
+${CLAWALKIETALKIE_TOKEN}`); left empty, that entry just doesn't connect and OAuth is unaffected. If both
+connect, the tools show up twice: turn off the one you don't use in the client's MCP settings.
+
+**Address.** Grok Bot gets a stable address, `gb:grokbot`, whichever way it signs in; a personal token acts
+as `gb:grokbot` too.
+
+**Approvals and reach.** A request from an assistant (`gb:`, `gp:`, `ca:`) waits for your approval by
+default: approve it on the board, or allow assistants' requests under Agents → assistants settings. Notes
+are delivered without approval. An assistant reaches only the agents on its allowlist; by default that is
+your own agents except those named `*:prod-*`.
+
+**Tools.** `list_sessions(online_only?)`, `send_message(to, text, type: note|request, reply_to?)` (answers
+a `message_id` and `queued`, or `held` when it waits for approval: don't resend it),
+`wait_for_reply(message_id, timeout_s ≤ 50)` (the replies, or `still_waiting: true`),
+`read_replies(message_id)`, `message_status(message_id)`, `inbox(after?, wait_s?)` (messages and a
+cursor) and `ack(ids)`, plus the older `send`, `who`, `rename`, `status` and `set_status`.
 
 ### claude.ai, ChatGPT and other hosted assistants
 

@@ -2,6 +2,12 @@
   "mcpServers": {
     "clawalkietalkie": {
       "url": "https://api.clawalkietalkie.com/mcp"
+    },
+    "clawalkietalkie-token": {
+      "url": "https://api.clawalkietalkie.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CLAWALKIETALKIE_TOKEN}"
+      }
     }
   }
 }

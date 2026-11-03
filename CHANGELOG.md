@@ -10,6 +10,17 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Cursor-format plugin 0.5.0 (Grok Bot): `displayName`, and an optional plugin variable
+  `CLAWALKIETALKIE_TOKEN` for a personal token from the board's Security tab. `mcp.json` keeps the OAuth
+  server `clawalkietalkie` unchanged and adds `clawalkietalkie-token`, which sends
+  `Authorization: Bearer ${CLAWALKIETALKIE_TOKEN}`, for runs that can't sign in in a browser.
+- The agent-messaging skill covers the hosted tools: `list_sessions` when the target is unclear,
+  `send_message` (request only when the user asked for work), up to about 5 `wait_for_reply` calls, then
+  `read_replies` later; held and refused messages are never resent.
+- README: Grok Bot install, sign-in (OAuth or personal token), the `gb:grokbot` address, approvals for
+  assistants' requests, the reach allowlist and the tool list.
+- CI scans the repository for secrets with gitleaks (`gitleaks/gitleaks-action` v2.3.9, gitleaks 8.30.1).
+- A test checks the Cursor plugin manifest and `mcp.json`.
 - Claude Code mod 0.4.1: when a turn that an incoming request started ends, its final answer (the
   engine's `turn.complete` `answer`) is sent back to the request's sender as a note threaded under the
   request (`replyTo`), once, with an `Idempotency-Key` of `reply-<request id>` so retries never send it
