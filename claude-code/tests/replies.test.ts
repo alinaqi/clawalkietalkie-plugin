@@ -102,3 +102,14 @@ test('with autoReply off, no reply goes back by itself', { options: { autoReply:
   await runTurn($, { text: seen.prompts[0]!, answer: 'All green.' })
   expect(sends(relay)).toHaveLength(0)
 })
+
+test('a held request never promises an automatic reply', { options: { autoDeliver: false } }, async ($, on) => {
+  const { relay, clock } = setup(on, SIGNED_IN)
+  relay.deliver('cc:happy-cat', 'run the tests')
+  await start($)
+  await clock.advance(1000)
+  const shown = (await $.command.run({ command: 'talkie', args: 'inbox', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })).text ?? ''
+  expect(shown).toMatch(/run the tests/)
+  expect(shown).not.toMatch(/automatically/)
+  expect(shown).toMatch(/reply_to: "m1"/)
+})

@@ -11,9 +11,10 @@ import type { Talkie } from './talkie.ts'
 export const replyKey = (target: Target): string => target.team ? `${target.name}@${target.team}` : target.name
 
 // Whether the turn this message starts answers its sender by itself: a request delivered as a prompt that
-// opens a conversation; never a note, a context message or a reply, so automatic replies cannot loop.
+// opens a conversation; never a note, a context message or a reply, so automatic replies cannot loop. With
+// auto-deliver off a request is held for /talkie inbox and starts no turn, so nothing answers it by itself.
 export const autoReplies = (t: Talkie, message: InboxMessage): boolean =>
-  t.options.autoReply && !notToAct(message) && (message.hop ?? 0) === 0 && !message.replyTo
+  t.options.autoReply && t.options.autoDeliver && !notToAct(message) && (message.hop ?? 0) === 0 && !message.replyTo
 
 // Called as a request is submitted as a prompt, with the text it is submitted as; replies.ts answers it.
 export const expectReply = (t: Talkie, message: InboxMessage, text: string): void => {

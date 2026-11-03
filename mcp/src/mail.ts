@@ -2,7 +2,7 @@
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from '../../claude-code/hooks/lib/address.ts'
 import { boardUrl, type MessageType, type Result, type Sent } from '../../claude-code/hooks/lib/relay.ts'
 import { describeWho, parseStatus, statusText } from '../../claude-code/hooks/lib/who.ts'
-import { keepCursor } from './cursor.ts'
+import { ackShown, keepCursor } from './cursor.ts'
 import { formatInbox } from './format.ts'
 import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
@@ -10,7 +10,10 @@ import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state
 // False when the relay refused or failed; a cursor it rejects is dropped and the inbox read from the start.
 export const pollOnce = async (s: AgentState, waitSeconds = 0): Promise<boolean> => {
   if (!s.auth) return true
-  const res = await relayOf(s).poll(s.identity.name, { instanceId: s.identity.instanceId, wait: waitSeconds, after: s.cursor })
+  const { identity, auth } = s
+  const res = await relayOf(s).poll(identity.name, { instanceId: identity.instanceId, wait: waitSeconds, after: s.cursor })
+  // Renamed or signed out meanwhile: the answer is the old identity's, not this one's.
+  if (s.identity !== identity || s.auth !== auth) return true
   if (!res.ok && res.status === 400 && s.cursor) {
     keepCursor(s, undefined)
     return pollOnce(s, waitSeconds)
@@ -31,7 +34,7 @@ export const inbox = async (s: AgentState): Promise<string> => {
   await pollOnce(s, 0)
   const taken = s.buffer.splice(0)
   for (const message of taken) s.hops.set(hopKey(parseTarget(message.from)) ?? message.from, message.hop ?? 0)
-  if (taken.length > 0) await relayOf(s).ack(s.identity.name, s.identity.instanceId, taken.map((m) => m.id))
+  await ackShown(s, taken.map((m) => m.id))
   keepCursor(s, s.cursor)
   return formatInbox(taken, selfOf(s))
 }

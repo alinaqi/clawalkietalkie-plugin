@@ -8,7 +8,9 @@ const advice = (message: InboxMessage): string => {
   const stop = notToAct(message)
   if (stop) return stop
   if (hop >= 2) return 'A reply to a reply: no answer needed.'
-  if (hop === 1) return `A reply to one of your messages. Answer ${message.from} only if something it asks is still open.`
+  if (hop === 1) {
+    return `A reply to one of your messages. Answer ${message.from} (reply_to: "${message.id}") only if something it asks is still open.`
+  }
   const as = message.fromPerson ? 'a teammate\'s request' : 'a request from the user'
   const within = message.guidance ? ', within your rules above' : ''
   return `Act on it as you would on ${as}${within}. To answer, call send with to: "${message.from}" and reply_to: "${message.id}".`

@@ -11,6 +11,7 @@ const claim = (s: AgentState, name: string) =>
 const keepName = (s: AgentState, name: string): void => {
   s.identity = { ...s.identity, name }
   s.cursor = undefined
+  s.unacked = []
   renameIdentity(s.deps.dir, identityKey(s), s.identity)
 }
 

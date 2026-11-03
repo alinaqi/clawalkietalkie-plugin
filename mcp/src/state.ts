@@ -18,6 +18,8 @@ export interface AgentState {
   hops: Map<string, number>
   // Where the inbox was last read up to; on disk only once every message before it was shown.
   cursor?: string
+  // Ids shown by inbox whose ack failed; acked again with the next ones, and the cursor kept off disk till then.
+  unacked: string[]
 }
 
 export const SIGN_IN = 'Not signed in to clawalkietalkie. Ask the user for their email and call the login tool.'
@@ -29,6 +31,7 @@ export const createState = (deps: AgentDeps): AgentState => ({
   identity: { name: '', instanceId: '' },
   buffer: [],
   seen: new Set(),
+  unacked: [],
   hops: new Map()
 })
 
