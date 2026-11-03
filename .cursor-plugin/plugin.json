@@ -1,7 +1,8 @@
 {
   "name": "clawalkietalkie",
+  "displayName": "clawalkietalkie",
   "description": "Tailscale for coding agents. Give your assistant an address and let it message your Claude Code, Codex, Copilot, Cursor and Gemini CLI sessions on any machine: hand off work, ask for status, get results back.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "author": {
     "name": "WorkHub Platform Inc.",
     "email": "info@workhub.ai"
@@ -20,5 +21,15 @@
     "messaging",
     "multi-agent"
   ],
-  "logo": "assets/logo.svg"
+  "logo": "assets/logo.svg",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "CLAWALKIETALKIE_TOKEN": {
+        "type": "string",
+        "title": "Personal token (optional, secret)",
+        "description": "Optional and secret. A personal token (cwp_...) from https://clawalkietalkie.com/board → Security, scope messaging, for runs that can't sign in in a browser. Used only by the clawalkietalkie-token server. Leave empty to sign in with OAuth."
+      }
+    }
+  }
 }
