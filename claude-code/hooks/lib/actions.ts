@@ -13,7 +13,7 @@ export const why = (res: Extract<Result<unknown>, { ok: false }>): string =>
   res.status === 0 ? 'the relay server is unreachable' : `the relay answered ${res.status} ${res.error}`
 
 function claim ($: EngineInterface, t: Talkie, name: string) {
-  return relayOf($, t).claim(name, { instanceId: t.identity.instanceId, cwd: t.cwd || undefined })
+  return relayOf($, t).claim(name, { instanceId: t.identity.instanceId, client: 'claude-code', cwd: t.cwd || undefined })
 }
 
 // Claims this session's name (a fresh one if another live session holds it) and listens.
@@ -34,7 +34,7 @@ export async function connect ($: EngineInterface, t: Talkie): Promise<string> {
 
 export async function who ($: EngineInterface, t: Talkie): Promise<string> {
   if (!t.auth) return SIGN_IN
-  const res = await describeWho(relayOf($, t), { self: t.identity.name, now: await $.clock.now() })
+  const res = await describeWho(relayOf($, t), { self: t.identity.name, now: await $.clock.now(), account: t.auth.email })
   return res.ok ? res.value : `Could not list sessions: ${why(res)}.`
 }
 

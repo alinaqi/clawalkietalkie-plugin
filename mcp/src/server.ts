@@ -7,7 +7,7 @@ import { pollForever } from './poll.ts'
 
 export interface ServerOptions { kind?: string, poll?: boolean }
 
-const VERSION = '0.4.1'
+const VERSION = '0.5.0'
 
 export const INSTRUCTIONS = [
   'clawalkietalkie connects this agent with the user\'s other coding agents (Claude Code, Codex, Copilot, Cursor, Gemini CLI, Grok Bot).',

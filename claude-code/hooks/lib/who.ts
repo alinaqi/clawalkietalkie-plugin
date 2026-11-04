@@ -4,7 +4,8 @@
 import { formatAddress } from './address.ts'
 import type { AgentStatus, Relay, Result, SessionInfo, StatusBody, TeamDetail } from './relay.ts'
 
-export interface At { self: string, now: number }
+// account: the email this machine is signed in as, shown first so a wrong sign-in is obvious.
+export interface At { self: string, now: number, account?: string }
 
 const STATES = new Set(['working', 'blocked', 'idle', 'done'])
 
@@ -46,7 +47,8 @@ export const describeWho = async (relay: Relay, at: At): Promise<Result<string>>
   if (!sessions.ok) return sessions
   const details = teams.ok ? await Promise.all((teams.value ?? []).map((team) => relay.team(team.slug))) : []
   const sections = details.flatMap((d) => d.ok ? [formatTeam(d.value)] : [])
-  return { ok: true, value: [formatWho(sessions.value, at), ...sections].join('\n\n') }
+  const account = at.account ? [`Signed in as ${at.account}.`] : []
+  return { ok: true, value: [...account, formatWho(sessions.value, at), ...sections].join('\n\n') }
 }
 
 // The status a tool was handed, checked as the relay will check it; a string says what is wrong.

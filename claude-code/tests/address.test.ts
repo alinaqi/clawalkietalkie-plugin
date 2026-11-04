@@ -9,7 +9,7 @@ test('parseAddress takes cc: or bare names, trimmed and lowercased', async () =>
 })
 
 test('parseAddress refuses what is not a name', async () => {
-  for (const bad of ['', 'cc:', '-dog', 'dog-', 'happy dog', 'happy_dog', 'x'.repeat(33), 'cc:a@b', 'zz:dog']) {
+  for (const bad of ['', 'cc:', '-dog', 'dog-', 'happy dog', 'happy_dog', 'x'.repeat(33), 'cc:a@b', '1z:dog']) {
     expect(parseAddress(bad)).toBe(null)
   }
 })
@@ -47,7 +47,7 @@ test('parseTarget keeps the agent prefix, or null when none is given', async () 
   expect(parseTarget('ca:desk')).toEqual({ kind: 'ca', name: 'desk', team: null })
   expect(parseTarget('gp:chat')).toEqual({ kind: 'gp', name: 'chat', team: null })
   expect(parseTarget('review-bot')).toEqual({ kind: null, name: 'review-bot', team: null })
-  expect(parseTarget('zz:review-bot')).toBe(null)
+  expect(parseTarget('1z:review-bot')).toBe(null)
 })
 
 test('formatAddress takes the kind, cc by default', async () => {
@@ -57,7 +57,7 @@ test('formatAddress takes the kind, cc by default', async () => {
 test('parseTarget reads a team address, kind and team optional', async () => {
   expect(parseTarget(' CX:Review@Acme ')).toEqual({ kind: 'cx', name: 'review', team: 'acme' })
   expect(parseTarget('api@acme')).toEqual({ kind: null, name: 'api', team: 'acme' })
-  for (const bad of ['api@', 'api@a@b', 'api@-x', '@acme', 'zz:api@acme']) expect(parseTarget(bad)).toBe(null)
+  for (const bad of ['api@', 'api@a@b', 'api@-x', '@acme', 'z:api@acme']) expect(parseTarget(bad)).toBe(null)
 })
 
 test('parseAddress takes personal addresses only', async () => {

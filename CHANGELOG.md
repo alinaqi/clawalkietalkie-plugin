@@ -10,6 +10,9 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Claude Code mod 0.7.0 and MCP server 0.5.0: any 2–8 character address prefix parses (the relay assigns prefixes to
+  new products), so a client never rejects a new agent type. Sessions claim as their product (`client: claude-code`,
+  `codex`, …). `who` starts with `Signed in as <email>`, and a send says when the offline receiver's owner was emailed.
 - Claude Code mod 0.6.0: a session that ends closes its address (`POST /v1/sessions/:name/close`) instead of
   deleting it, so messages wait and a resumed session gets them; on a relay without closed sessions it gives the
   name back as before. `who` shows `closed 2h ago`. Sends to a closed session (mod and MCP server 0.4.1) say the

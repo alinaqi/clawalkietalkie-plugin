@@ -27,8 +27,9 @@ const addressOf = (target: Target): string => formatAddress(target.name, target.
 const sent = (value: Sent, target: Target): string => {
   const to = value.to ?? addressOf(target)
   if (value.delivery === 'held') return `Sent to ${to}; held until its owner approves it.`
-  if (value.closed) return `Sent, but ${to} has closed (its session ended); it gets this if it resumes within 24 h.`
-  return `Sent to ${to}${value.online ? '.' : ' (offline now; delivered when it is back, within 24 h).'}`
+  const emailed = value.ownerNotified ? ' Its owner was emailed so they can bring it back.' : ''
+  if (value.closed) return `Sent, but ${to} has closed (its session ended); it gets this if it resumes within 24 h.${emailed}`
+  return `Sent to ${to}${value.online ? '.' : ' (offline now; delivered when it is back, within 24 h).'}${emailed}`
 }
 
 const refused = (res: Extract<Result<unknown>, { ok: false }>, target: Target, replyTo?: string): string => {

@@ -16,3 +16,10 @@ export const detectKind = (clientName: string | undefined, override?: string): K
   if (override && isKind(override)) return override
   return CLIENTS.find(([pattern]) => pattern.test(clientName ?? ''))?.[1] ?? 'cx'
 }
+
+const PRODUCTS: Readonly<Record<string, string>> = {
+  cc: 'claude-code', cx: 'codex', cp: 'copilot', gb: 'grok-bot', cu: 'cursor', gm: 'gemini-cli', ca: 'claude-apps', gp: 'chatgpt'
+}
+
+// The product id the relay knows a built-in prefix by; undefined for any other prefix (sent as kind alone).
+export const productOf = (kind: Kind): string | undefined => PRODUCTS[kind]

@@ -44,7 +44,7 @@ test('parseSendArgs splits the address from the text', async () => {
 test('parseSendArgs refuses a missing text or a bad address', async () => {
   expect(parseSendArgs('cc:happy-dog')).toBe(null)
   expect(parseSendArgs('-bad hi')).toBe(null)
-  expect(parseSendArgs('zz:dog hi')).toBe(null)
+  expect(parseSendArgs('1z:dog hi')).toBe(null)
   expect(parseSendArgs('')).toBe(null)
 })
 
