@@ -30,7 +30,7 @@ export const formatWho = (sessions: readonly SessionInfo[], at: At): string => {
   return sessions.map((s) => {
     const you = s.address === formatAddress(at.self) ? ' (this session)' : ''
     const place = [s.host, s.cwd].filter(Boolean).join(':')
-    const seen = s.online ? 'online' : `last seen ${ago(at.now - s.lastSeen)}`
+    const seen = s.online ? 'online' : `${s.closed ? 'closed' : 'last seen'} ${ago(at.now - s.lastSeen)}`
     return line(s.online, [`${s.address}${you}`, place, seen, s.status && statusText(s.status)])
   }).join('\n')
 }

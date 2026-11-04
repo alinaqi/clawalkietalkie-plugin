@@ -4,7 +4,7 @@ export type AgentState = 'working' | 'blocked' | 'idle' | 'done'
 export interface StatusBody { state: AgentState, task: string, blockedOn?: string, waitingFor?: string }
 export interface AgentStatus extends StatusBody { at: number }
 export interface SessionInfo {
-  address: string, online: boolean, lastSeen: number, host: string | null, cwd: string | null, status?: AgentStatus | null
+  address: string, online: boolean, lastSeen: number, host: string | null, cwd: string | null, status?: AgentStatus | null, closed?: boolean
 }
 export type MessageType = 'note' | 'request'
 // fromPerson is the teammate's email (key:<name> for CI), null for the person's own agents. delivery 'prompt'
@@ -23,7 +23,7 @@ export interface TeamDetail extends TeamInfo { members: Array<{ email: string, r
 export interface Invite { id: string, team: string, name: string, role: string, invitedBy: string }
 export interface Approval { id: string, from: string, fromEmail: string, to: string, text: string, sentAt: number }
 export interface Sent {
-  id: string, online: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
+  id: string, online: boolean, closed?: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
 }
 export interface ClaimBody { instanceId: string, kind?: string, host?: string, cwd?: string }
 // replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.

@@ -100,8 +100,17 @@ test('relay errors while polling back off and recover', async ($, on) => {
   expect(seen.prompts).toHaveLength(1)
 })
 
-test('session end gives the name back', async ($, on) => {
+test('session end closes the session, keeping its address so messages wait for it', async ($, on) => {
   const { relay } = setup(on, SIGNED_IN)
+  await start($)
+  await $.session.end({ reason: 'prompt_input_exit', sessionId: 'sess-1', resume: { sessionId: 'sess-1' } as never })
+  expect(relay.find('POST', '/v1/sessions/happy-dog/close')[0]?.body).toEqual({ instanceId: 'inst-dog' })
+  expect(relay.find('DELETE', '/v1/sessions/happy-dog')).toHaveLength(0)
+})
+
+test('session end falls back to giving the name back on a relay without close', async ($, on) => {
+  const { relay } = setup(on, SIGNED_IN)
+  relay.override('POST /v1/sessions/happy-dog/close', { status: 404, body: { error: 'not_found' } })
   await start($)
   await $.session.end({ reason: 'prompt_input_exit', sessionId: 'sess-1', resume: { sessionId: 'sess-1' } as never })
   expect(relay.find('DELETE', '/v1/sessions/happy-dog')[0]?.body).toEqual({ instanceId: 'inst-dog' })

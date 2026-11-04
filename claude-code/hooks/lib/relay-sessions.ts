@@ -9,6 +9,8 @@ const inboxPath = (name: string, query: InboxQuery): string =>
 export const sessionCalls = (call: Call) => ({
   claim: (name: string, body: ClaimBody) => pick<string>(call('PUT', `/v1/sessions/${enc(name)}`, body), 'address'),
   unclaim: (name: string, instanceId: string) => call<object>('DELETE', `/v1/sessions/${enc(name)}`, { instanceId }),
+  // The session ended: its address stays, closed, so messages wait in case it resumes.
+  close: (name: string, instanceId: string) => call<object>('POST', `/v1/sessions/${enc(name)}/close`, { instanceId }),
   list: () => pick<SessionInfo[]>(call('GET', '/v1/sessions'), 'sessions'),
   send: (body: SendBody) => call<Sent>('POST', '/v1/messages', body),
   setStatus: (name: string, body: StatusBody & { instanceId: string }) => call<object>('PUT', `/v1/sessions/${enc(name)}/status`, body),
