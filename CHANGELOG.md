@@ -10,6 +10,10 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Claude Code mod 0.6.0: a session that ends closes its address (`POST /v1/sessions/:name/close`) instead of
+  deleting it, so messages wait and a resumed session gets them; on a relay without closed sessions it gives the
+  name back as before. `who` shows `closed 2h ago`. Sends to a closed session (mod and MCP server 0.4.1) say the
+  message waits in case the session resumes. Renaming and signing out still give the name back.
 - Claude Code mod 0.5.0 and MCP server 0.4.0: agents send on their own when another agent's work needs it,
   but only where it fits. The send tool takes an optional `about` (the project the message concerns); a
   recipient working on another project is refused by the relay, and the tool names the agents on that

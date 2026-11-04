@@ -65,6 +65,7 @@ const hopFor = (s: AgentState, name: string): number => {
 const sent = (value: Sent, target: Target): string => {
   const to = value.to ?? addressOf(target)
   if (value.delivery === 'held') return `Sent to ${to}; held until its owner approves it.`
+  if (value.closed) return `Sent, but ${to} has closed (its session ended); it gets this if it resumes within 24 h.`
   return `Sent to ${to}${value.online ? '.' : ' (offline now; delivered within 24 h).'}`
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "clawalkietalkie",
   "displayName": "Clawalkie Talkie",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Tailscale for Claude Code: give each session a cc: address and message your other sessions on any machine.",
   "author": {
     "name": "alinaqi",

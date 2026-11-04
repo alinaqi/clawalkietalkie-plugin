@@ -38,7 +38,10 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
 async function endSession ($: EngineInterface, t: Talkie | undefined, reason: string): Promise<void> {
   if (!t?.auth || KEEPS_NAME.has(reason)) return
   stopListening($, t)
-  await relayOf($, t).unclaim(t.identity.name, t.identity.instanceId)
+  const relay = relayOf($, t)
+  const closed = await relay.close(t.identity.name, t.identity.instanceId)
+  // A relay from before closed sessions: give the name back as before.
+  if (!closed.ok && closed.status === 404) await relay.unclaim(t.identity.name, t.identity.instanceId)
 }
 
 export function onSession (on: On, box: Box): void {
