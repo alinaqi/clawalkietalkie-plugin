@@ -23,8 +23,9 @@ export interface TeamDetail extends TeamInfo { members: Array<{ email: string, r
 export interface Invite { id: string, team: string, name: string, role: string, invitedBy: string }
 export interface Approval { id: string, from: string, fromEmail: string, to: string, text: string, sentAt: number }
 export interface Sent {
-  id: string, online: boolean, closed?: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
+  id: string, online: boolean, closed?: boolean, ownerNotified?: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
 }
-export interface ClaimBody { instanceId: string, kind?: string, host?: string, cwd?: string }
+// client: the product id (claude-code, codex); the relay assigns its prefix.
+export interface ClaimBody { instanceId: string, kind?: string, client?: string, host?: string, cwd?: string }
 // replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.
 export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string, about?: string }

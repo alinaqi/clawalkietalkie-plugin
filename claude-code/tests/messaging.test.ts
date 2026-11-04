@@ -131,7 +131,7 @@ test('a wrong prefix suggests the agent that holds the name', async ($, on) => {
 test('an unknown prefix is not an address', async ($, on) => {
   setup(on, SIGNED_IN)
   await start($)
-  expect((await $.tool.call({ tool: SEND, to: 'zz:review-bot', text: 'x' })).result).toMatch(/not an address/)
+  expect((await $.tool.call({ tool: SEND, to: '1z:review-bot', text: 'x' })).result).toMatch(/not an address/)
 })
 
 test('replies keep each sender\'s hop: a mixed batch from two senders', async ($, on) => {

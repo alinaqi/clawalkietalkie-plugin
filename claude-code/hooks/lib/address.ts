@@ -12,8 +12,9 @@ const ANIMALS = [
   'moose', 'heron', 'gecko', 'bison', 'crane', 'llama', 'mole', 'yak'
 ]
 
-// The prefix names the agent behind an address.
-export const KINDS = {
+// The prefix names the agent behind an address. These are built in; the relay assigns prefixes to other products
+// (GET /v1/kinds), so a client checks only a prefix's form.
+export const KINDS: Readonly<Record<string, string>> = {
   cc: 'Claude Code',
   cx: 'Codex',
   cp: 'Copilot',
@@ -23,11 +24,13 @@ export const KINDS = {
   gh: 'GitHub Actions',
   ca: 'Claude apps',
   gp: 'ChatGPT'
-} as const
+}
 
-export type Kind = keyof typeof KINDS
+// Any 2 to 8 lowercase letters or digits, starting with a letter.
+export type Kind = string
+const KIND = /^[a-z][a-z0-9]{1,7}$/
 
-export const isKind = (value: string): value is Kind => Object.hasOwn(KINDS, value)
+export const isKind = (value: string): value is Kind => KIND.test(value)
 
 export const isValidName = (name: string): boolean => NAME.test(name)
 
@@ -38,7 +41,7 @@ export interface Target { kind: Kind | null, name: string, team: string | null }
 export const parseTarget = (input: string): Target | null => {
   const [local = '', team = null, ...rest] = input.trim().toLowerCase().split('@')
   if (rest.length > 0 || (team !== null && !isValidName(team))) return null
-  const match = /^([a-z]{2}):(.*)$/.exec(local)
+  const match = /^([a-z][a-z0-9]{1,7}):(.*)$/.exec(local)
   if (match && !isKind(match[1]!)) return null
   const kind = match ? match[1] as Kind : null
   const name = match ? match[2]! : local

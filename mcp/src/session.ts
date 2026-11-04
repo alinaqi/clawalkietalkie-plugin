@@ -1,4 +1,5 @@
 // Signing in and holding an address.
+import { productOf } from './kind.ts'
 import { basename } from 'node:path'
 import { parseAddress, type Kind } from '../../claude-code/hooks/lib/address.ts'
 import { identityFor, loadCursor, renameIdentity } from './config.ts'
@@ -6,7 +7,7 @@ import { cursorKey } from './cursor.ts'
 import { freshName, identityKey, relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
 const claim = (s: AgentState, name: string) =>
-  relayOf(s).claim(name, { instanceId: s.identity.instanceId, kind: s.kind, cwd: basename(s.deps.cwd) })
+  relayOf(s).claim(name, { instanceId: s.identity.instanceId, kind: s.kind, client: productOf(s.kind), cwd: basename(s.deps.cwd) })
 
 const keepName = (s: AgentState, name: string): void => {
   s.identity = { ...s.identity, name }
