@@ -7,7 +7,7 @@ import { pollForever } from './poll.ts'
 
 export interface ServerOptions { kind?: string, poll?: boolean }
 
-const VERSION = '0.5.0'
+const VERSION = '0.6.0'
 
 export const INSTRUCTIONS = [
   'clawalkietalkie connects this agent with the user\'s other coding agents (Claude Code, Codex, Copilot, Cursor, Gemini CLI, Grok Bot).',
@@ -38,14 +38,17 @@ const SEND_SHAPE = {
     'asked the other agent to do something. A note never starts work there; a request starts it only as its owner allows.'),
   reply_to: z.string().optional().describe('The id of the message this answers, when it answers one the inbox showed; ' +
     'it threads the reply under that message. Only for a message from the same address.'),
-  about: z.string().optional().describe('The project the message concerns, as who shows it; the relay refuses it for an agent on another')
+  about: z.string().optional().describe('The project the message concerns, as who shows it; the relay refuses it for an agent on another'),
+  files: z.array(z.string()).max(5).optional().describe('Paths of files in this project to send with it (images or text; never secrets, dotfiles or ' +
+    'ignored files). Files to anyone but the user\'s own agents wait for the user\'s approval.')
 }
 
 const sendArgs = (a: Record<string, unknown>) =>
   ({
     type: a.type === 'request' ? 'request' as const : 'note' as const,
     replyTo: typeof a.reply_to === 'string' ? a.reply_to : undefined,
-    about: typeof a.about === 'string' ? a.about : undefined
+    about: typeof a.about === 'string' ? a.about : undefined,
+    files: Array.isArray(a.files) ? a.files.map(String) : undefined
   })
 
 const registerTools = (server: McpServer, agent: Agent): void => {

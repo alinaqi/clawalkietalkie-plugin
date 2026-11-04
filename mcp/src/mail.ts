@@ -5,6 +5,7 @@ import { describeWho, parseStatus, statusText } from '../../claude-code/hooks/li
 import { ackShown, keepCursor } from './cursor.ts'
 import { guardRefusal } from '../../claude-code/hooks/lib/refusals.ts'
 import { formatInbox } from './format.ts'
+import { saveReceived, uploadPaths } from './files.ts'
 import { relayOf, selfOf, setAuth, SIGN_IN, why, type AgentState } from './state.ts'
 
 // Fetches what waits after the cursor (long-polling up to `waitSeconds`) into the buffer, once per message.
@@ -33,7 +34,7 @@ export const pollOnce = async (s: AgentState, waitSeconds = 0): Promise<boolean>
 export const inbox = async (s: AgentState): Promise<string> => {
   if (!s.auth) return SIGN_IN
   await pollOnce(s, 0)
-  const taken = s.buffer.splice(0)
+  const taken = await saveReceived(s, s.buffer.splice(0))
   for (const message of taken) s.hops.set(hopKey(parseTarget(message.from)) ?? message.from, message.hop ?? 0)
   await ackShown(s, taken.map((m) => m.id))
   keepCursor(s, s.cursor)
@@ -80,7 +81,7 @@ const refused = (s: AgentState, res: Extract<Result<unknown>, { ok: false }>, te
 
 // replyTo: the id of a received message this answers, threading it there.
 // about: the project the message concerns, so the relay refuses it for an agent on another.
-export interface Outgoing { text: string, type: MessageType, replyTo?: string, about?: string }
+export interface Outgoing { text: string, type: MessageType, replyTo?: string, about?: string, files?: string[] }
 
 // type: 'note' informs; 'request' asks the receiver to do something, as its owner's settings allow.
 export const send = async (s: AgentState, to: string, out: Outgoing): Promise<string> => {
@@ -88,7 +89,10 @@ export const send = async (s: AgentState, to: string, out: Outgoing): Promise<st
   const target = parseTarget(to)
   if (!target) return `"${to}" is not an address (like cc:happy-dog, cx:review-bot or cc:api@acme).`
   const { name: from, instanceId } = s.identity
-  const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), ...out, hop: hopFor(s, hopKey(target)!) })
+  const uploaded = out.files?.length ? await uploadPaths(s, out.files) : { ids: [] }
+  if ('error' in uploaded) return uploaded.error
+  const { files: _paths, ...rest } = out
+  const res = await relayOf(s).send({ from, instanceId, to: formatTarget(target), ...rest, ...(uploaded.ids.length ? { files: uploaded.ids } : {}), hop: hopFor(s, hopKey(target)!) })
   if (res.ok) return sent(res.value, target)
   const guard = guardRefusal(res, addressOf(target))
   if (guard) return guard

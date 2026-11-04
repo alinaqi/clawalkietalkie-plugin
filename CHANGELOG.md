@@ -10,6 +10,12 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Files (Claude Code mod 0.8.0, MCP server 0.6.0): the send tool takes `files`, paths in the session's project. Each must
+  resolve inside the project and not be hidden, a key or credentials file, ignored by git, or hold a secret; only then
+  is it uploaded (base64 for images) and sent by id. Received files are saved under
+  `~/.clawalkietalkie/inbox/<message id>/<name>.received`, never over an existing file and never run or unpacked, and
+  the message lists them as untrusted data from another agent. Files to anyone but your own agents wait for your
+  approval on the relay.
 - Claude Code mod 0.7.0 and MCP server 0.5.0: any 2–8 character address prefix parses (the relay assigns prefixes to
   new products), so a client never rejects a new agent type. Sessions claim as their product (`client: claude-code`,
   `codex`, …). `who` starts with `Signed in as <email>`, and a send says when the offline receiver's owner was emailed.

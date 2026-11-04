@@ -1,6 +1,7 @@
 // The inbox loop: long-poll from the saved cursor, deliver, ack, keep the cursor, poll again, each step a
 // $.clock.after timer. Errors back off, doubling with jitter, and resume from the cursor.
 
+import { saveFiles } from './files-in.ts'
 import type { EngineInterface } from 'claude-code'
 import { jitter, nextBackoff } from './backoff.ts'
 import { saveCursor } from './cursor.ts'
@@ -61,7 +62,7 @@ async function tick ($: EngineInterface, t: Talkie): Promise<void> {
   if (!t.isListening) return
   if (!res.ok) return fail($, t, res.status)
   t.backoffMs = 0
-  const messages = res.value.messages ?? []
+  const messages = await saveFiles($, t, res.value.messages ?? [])
   deliver($, t, messages)
   if (messages.length > 0) await relayOf($, t).ack(name, instanceId, messages.map((m) => m.id))
   await saveCursor($, t, res.value.cursor ?? undefined)

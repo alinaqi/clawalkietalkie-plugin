@@ -29,7 +29,7 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
   await $.tool.register(WHO_TOOL)
   await $.tool.register(SET_STATUS_TOOL)
   await $.tool.register(DISCARD_TOOL)
-  const talkie = await loadTalkie($, options, folderName(cwd))
+  const talkie = await loadTalkie($, options, { cwd: folderName(cwd), root: cwd })
   if (talkie.auth) await connect($, talkie)
   else showStatus($, talkie)
   return talkie

@@ -18,7 +18,8 @@ const stringOr = (value: unknown): string | undefined => value === undefined ? u
 
 function onTools (on: On, box: Box): void {
   on('tool.call', { tool: 'mcp__clawalkietalkie__send' }, async ($, e) => {
-    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type: stringOr(e.type), replyTo: stringOr(e.reply_to), about: stringOr(e.about), isAnswer: true }
+    const files = Array.isArray(e.files) ? e.files.map(String).slice(0, 5) : undefined
+    const out = { to: String(e.to ?? ''), text: String(e.text ?? ''), type: stringOr(e.type), replyTo: stringOr(e.reply_to), about: stringOr(e.about), files, isAnswer: true }
     return { result: box.talkie ? await sendMessage($, box.talkie, out) : NOT_READY }
   }).catch(() => FAILED)
   on('tool.call', { tool: 'mcp__clawalkietalkie__discard' }, async ($, e) =>

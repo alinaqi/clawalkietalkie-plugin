@@ -1,10 +1,12 @@
 // The fake relay's answers, one per endpoint, to the Phase 5 contract and reply threading.
 
 export interface Call { method: string, path: string, body: Record<string, unknown> | undefined, headers: Record<string, string> }
-export interface Reply { status: number, body?: unknown }
+// text: a raw answer (a file's content), sent as is instead of JSON.
+export interface Reply { status: number, body?: unknown, text?: string }
 export interface Extra {
   type?: 'note' | 'request', approved?: 'auto' | 'person' | null, guidance?: string,
   delivery?: 'prompt' | 'context', fromPerson?: string | null, replyTo?: string, thread?: string
+  files?: Array<{ id: string, name: string, size: number, mime: string, sha256: string }>
 }
 export interface Settings { autoApprove: boolean }
 export type Body = Call['body']

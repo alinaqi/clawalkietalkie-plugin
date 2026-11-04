@@ -13,7 +13,12 @@ export type MessageType = 'note' | 'request'
 export interface InboxMessage {
   id: string, from: string, text: string, sentAt: number, hop?: number, delivery?: 'prompt' | 'context', fromPerson?: string | null
   type?: MessageType, approved?: 'auto' | 'person' | null, guidance?: string, replyTo?: string, thread?: string
+  files?: InboxFile[]
+  // Set by the mod: where each file was saved on this machine, or why it was not.
+  saved?: SavedFile[]
 }
+export interface InboxFile { id: string, name: string, size: number, mime: string, sha256: string, formulas?: boolean }
+export interface SavedFile { name: string, mime: string, size: number, path?: string, error?: string }
 // One read of the inbox: what waits after `after`, and the cursor to read on from (null with nothing yet).
 export interface InboxPage { messages: InboxMessage[], cursor: string | null }
 export interface InboxQuery { instanceId: string, wait: number, after?: string }
@@ -28,4 +33,4 @@ export interface Sent {
 // client: the product id (claude-code, codex); the relay assigns its prefix.
 export interface ClaimBody { instanceId: string, kind?: string, client?: string, host?: string, cwd?: string }
 // replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.
-export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string, about?: string }
+export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string, about?: string, files?: string[] }
