@@ -60,3 +60,48 @@ describe('receiving files', () => {
     expect(existsSync(path)).toBe(true)
   })
 })
+
+describe('more sending refusals and paths', () => {
+  it('refuses a file git ignores and one over 4 MB', async () => {
+    const root = project()
+    const { execFileSync } = await import('node:child_process')
+    execFileSync('git', ['init', '-q'], { cwd: root })
+    writeFileSync(join(root, '.gitignore'), 'dist/\n')
+    mkdirSync(join(root, 'dist'))
+    writeFileSync(join(root, 'dist', 'out.txt'), 'built\n')
+    writeFileSync(join(root, 'big.txt'), 'a'.repeat(4 * 1024 * 1024 + 1))
+    const { agent, relay } = await agentIn(root)
+    expect(await agent.send('cc:x', 'x', { files: ['dist/out.txt'] })).toMatch(/ignored by git/)
+    expect(await agent.send('cc:x', 'x', { files: ['big.txt'] })).toMatch(/larger than 4 MB/)
+    expect(relay.find('POST', '/v1/files')).toHaveLength(0)
+  })
+
+  it('sends an image as base64, and explains a relay refusal', async () => {
+    const root = project()
+    writeFileSync(join(root, 'shot.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    const { agent, relay } = await agentIn(root)
+    relay.override('POST /v1/files', { status: 422, body: { error: 'file_blocked', reason: 'not_an_image' } })
+    expect(await agent.send('cc:x', 'x', { files: ['shot.png'] })).toMatch(/refused by the relay \(not_an_image\)/)
+    const call = relay.find('POST', '/v1/files')[0]!
+    expect(call.headers['x-content-encoding']).toBe('base64')
+    expect(call.body).toBe(Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64'))
+  })
+})
+
+describe('more receiving', () => {
+  it('never overwrites a file already saved, and reports a download it could not make', async () => {
+    const { agent, relay, home } = await agentIn(project())
+    const dir = join(home, '.clawalkietalkie', 'inbox', 'm1')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'result.txt.received'), 'mine\n')
+    relay.override('GET /v1/files/f9/content', { status: 200, text: Buffer.from('theirs\n').toString('base64') })
+    relay.override('GET /v1/files/f8/content', { status: 404, body: { error: 'unknown_file' } })
+    relay.deliver('cc:dev', 'two files', 0, { files: [
+      { id: 'f9', name: 'result.txt', size: 7, mime: 'text/plain; charset=utf-8', sha256: 'ab' },
+      { id: 'f8', name: 'gone.txt', size: 1, mime: 'text/plain; charset=utf-8', sha256: 'cd' }
+    ] })
+    const text = await agent.inbox()
+    expect(readFileSync(join(dir, 'result.txt.received'), 'utf8')).toBe('mine\n')
+    expect(text).toMatch(/gone\.txt: could not be downloaded \(unknown_file\)/)
+  })
+})

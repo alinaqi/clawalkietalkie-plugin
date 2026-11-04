@@ -18,7 +18,8 @@ async function writeBinary ($: EngineInterface, path: string, base64: string): P
   return res?.exitCode === 0
 }
 
-async function saveOne ($: EngineInterface, t: Talkie, file: InboxFile, dir: string): Promise<SavedFile> {
+async function saveOne ($: EngineInterface, t: Talkie, where: { file: InboxFile, dir: string }): Promise<SavedFile> {
+  const { file, dir } = where
   const path = `${dir}/${file.name}.received`
   const saved = { name: file.name, mime: file.mime, size: file.size }
   if (await $.fs.exists(path)) return { ...saved, path }
@@ -43,7 +44,7 @@ export async function saveFiles ($: EngineInterface, t: Talkie, messages: readon
     if (!message.files?.length || !home) { out.push(message); continue }
     const dir = `${home}/.clawalkietalkie/inbox/${message.id}`
     const saved: SavedFile[] = []
-    for (const file of message.files) saved.push(await saveOne($, t, file, dir).catch(() => ({ name: file.name, mime: file.mime, size: file.size, error: 'could not be saved' })))
+    for (const file of message.files) saved.push(await saveOne($, t, { file, dir }).catch(() => ({ name: file.name, mime: file.mime, size: file.size, error: 'could not be saved' })))
     out.push({ ...message, saved })
   }
   return out
