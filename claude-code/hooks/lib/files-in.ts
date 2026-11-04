@@ -1,6 +1,7 @@
 // Files that came with messages are saved outside every project, under ~/.clawalkietalkie/inbox/<message id>/, as
 // <name>.received: never over an existing file, never run or unpacked. Text is written directly; a binary arrives as
 // base64 and is decoded by the shell (PowerShell on Windows), since the mod writes text only.
+import { isSafeMessageId, isSafeReceivedName, UNSAFE_NAME } from './file-rules.ts'
 import type { EngineInterface } from 'claude-code'
 import type { InboxFile, InboxMessage, SavedFile } from './relay.ts'
 import { relayOf, type Talkie } from './talkie.ts'
@@ -20,8 +21,9 @@ async function writeBinary ($: EngineInterface, path: string, base64: string): P
 
 async function saveOne ($: EngineInterface, t: Talkie, where: { file: InboxFile, dir: string }): Promise<SavedFile> {
   const { file, dir } = where
-  const path = `${dir}/${file.name}.received`
   const saved = { name: file.name, mime: file.mime, size: file.size }
+  if (!isSafeReceivedName(file.name)) return { ...saved, error: UNSAFE_NAME }
+  const path = `${dir}/${file.name}.received`
   if (await $.fs.exists(path)) return { ...saved, path }
   const text = isText(file.mime)
   const res = await relayOf($, t).files.content(file.id, { as: t.identity.name, instanceId: t.identity.instanceId }, !text)
@@ -41,7 +43,7 @@ export async function saveFiles ($: EngineInterface, t: Talkie, messages: readon
   const home = await homeOf($)
   const out: InboxMessage[] = []
   for (const message of messages) {
-    if (!message.files?.length || !home) { out.push(message); continue }
+    if (!message.files?.length || !home || !isSafeMessageId(message.id)) { out.push(message); continue }
     const dir = `${home}/.clawalkietalkie/inbox/${message.id}`
     const saved: SavedFile[] = []
     for (const file of message.files) saved.push(await saveOne($, t, { file, dir }).catch(() => ({ name: file.name, mime: file.mime, size: file.size, error: 'could not be saved' })))

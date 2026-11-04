@@ -2,9 +2,9 @@
 // secret-bearing ones; received files are saved under ~/.clawalkietalkie/inbox/<message>/<name>.received, never over
 // an existing file and never run. Both go as base64, like the Claude Code mod.
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join, relative, sep } from 'node:path'
-import { extOf, IMAGE_EXTS, MAX_SEND_BYTES, PROBLEM_TEXT, pathProblem } from '../../claude-code/hooks/lib/file-rules.ts'
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { extOf, IMAGE_EXTS, isSafeMessageId, isSafeReceivedName, MAX_SEND_BYTES, PROBLEM_TEXT, pathProblem, UNSAFE_NAME } from '../../claude-code/hooks/lib/file-rules.ts'
 import type { InboxMessage, SavedFile } from '../../claude-code/hooks/lib/relay.ts'
 import { findSecret } from '../../claude-code/hooks/lib/secret-rules.ts'
 import { relayOf, type AgentState } from './state.ts'
@@ -52,8 +52,12 @@ export const uploadPaths = async (s: AgentState, paths: readonly string[]): Prom
 }
 
 const saveOne = async (s: AgentState, file: NonNullable<InboxMessage['files']>[number], dir: string): Promise<SavedFile> => {
-  const path = join(dir, `${file.name}.received`)
   const saved = { name: file.name, mime: file.mime, size: file.size }
+  if (!isSafeReceivedName(file.name)) return { ...saved, error: UNSAFE_NAME }
+  const path = join(dir, `${file.name}.received`)
+  // Belt and braces: the path must stay inside this message's inbox folder.
+  if (!resolve(path).startsWith(resolve(dir) + sep)) return { ...saved, error: UNSAFE_NAME }
+  if (existsSync(path)) return { ...saved, path }
   const res = await relayOf(s).files.content(file.id, { as: s.identity.name, instanceId: s.identity.instanceId }, true)
   if (!res.ok) return { ...saved, error: `could not be downloaded (${res.error})` }
   mkdirSync(dir, { recursive: true })
@@ -64,7 +68,7 @@ const saveOne = async (s: AgentState, file: NonNullable<InboxMessage['files']>[n
 export const saveReceived = async (s: AgentState, messages: readonly InboxMessage[]): Promise<InboxMessage[]> => {
   const out: InboxMessage[] = []
   for (const message of messages) {
-    if (!message.files?.length) { out.push(message); continue }
+    if (!message.files?.length || !isSafeMessageId(message.id)) { out.push(message); continue }
     const dir = join(s.deps.home, '.clawalkietalkie', 'inbox', message.id)
     const saved: SavedFile[] = []
     for (const file of message.files) saved.push(await saveOne(s, file, dir).catch(() => ({ name: file.name, mime: file.mime, size: file.size, error: 'could not be saved' })))

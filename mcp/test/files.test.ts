@@ -112,3 +112,26 @@ describe('secret rules', () => {
     expect(findSecret(`KEY=cwk_${'a'.repeat(43)}`)).toBe('clawalkietalkie_token')
   })
 })
+
+describe('received file names', () => {
+  it('are checked before any path is built: nothing is written outside the inbox', async () => {
+    const { agent, relay, home } = await agentIn(project())
+    relay.override('GET /v1/files/f7/content', { status: 200, text: Buffer.from('pwned\n').toString('base64') })
+    relay.deliver('cc:dev', 'evil', 0, { files: [{ id: 'f7', name: '../../evil.sh', size: 6, mime: 'text/plain; charset=utf-8', sha256: 'ee' }] })
+    const text = await agent.inbox()
+    expect(existsSync(join(home, '.clawalkietalkie', 'evil.sh.received'))).toBe(false)
+    expect(existsSync(join(home, 'evil.sh.received'))).toBe(false)
+    expect(text).toMatch(/evil\.sh: not saved \(unsafe name\)/)
+    expect(relay.find('GET', '/v1/files/f7/content')).toHaveLength(0)
+  })
+
+  it('does not download again a file already saved', async () => {
+    const { agent, relay, home } = await agentIn(project())
+    const dir = join(home, '.clawalkietalkie', 'inbox', 'm1')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'kept.txt.received'), 'kept\n')
+    relay.deliver('cc:dev', 'again', 0, { files: [{ id: 'f6', name: 'kept.txt', size: 5, mime: 'text/plain; charset=utf-8', sha256: 'aa' }] })
+    await agent.inbox()
+    expect(relay.find('GET', '/v1/files/f6/content')).toHaveLength(0)
+  })
+})

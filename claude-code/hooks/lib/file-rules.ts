@@ -31,3 +31,15 @@ export const PROBLEM_TEXT: Record<PathProblem | 'too_large' | 'ignored' | 'missi
   ignored: 'it is ignored by git (build output, dependencies or local secrets)',
   missing: 'not found'
 }
+
+// A received file's name and its message id, as the relay hands them, before a client builds a path from them: the
+// relay's own name rule, so a buggy or compromised relay cannot make a client write outside its inbox.
+const SAFE_NAME = /^[A-Za-z0-9 ._()-]{1,128}$/
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/
+
+export const isSafeReceivedName = (name: string): boolean =>
+  SAFE_NAME.test(name) && !/^[.-]/.test(name) && !/[. ]$/.test(name) && !name.includes('..')
+
+export const isSafeMessageId = (id: string): boolean => SAFE_ID.test(id)
+
+export const UNSAFE_NAME = 'not saved (unsafe name)'
