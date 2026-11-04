@@ -82,9 +82,9 @@ describe('the MCP server and requests', () => {
     expect(client.getInstructions()).toMatch(/auto-approve[^.]*board/i)
   })
 
-  it('reports version 0.5.0', async () => {
+  it('reports version 0.6.0', async () => {
     const { client } = await connect()
-    expect(client.getServerVersion()?.version).toBe('0.5.0')
-    expect(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version).toBe('0.5.0')
+    expect(client.getServerVersion()?.version).toBe('0.6.0')
+    expect(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version).toBe('0.6.0')
   })
 })

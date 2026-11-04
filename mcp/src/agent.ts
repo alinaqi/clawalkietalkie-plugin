@@ -5,17 +5,17 @@ import { discard } from './discard.ts'
 import { inbox, pollOnce, send, setStatus, who } from './mail.ts'
 import type { Outgoing } from './mail.ts'
 import { login, rename, start, status, verify } from './session.ts'
-import { createState, type AgentDeps } from './state.ts'
+import { createState, type AgentDepsInput } from './state.ts'
 
-export type { AgentDeps } from './state.ts'
+export type { AgentDeps, AgentDepsInput } from './state.ts'
 
 // How to send: a type alone, as before, or with the id of the message it answers.
-export type SendOptions = MessageType | { type?: MessageType, replyTo?: string, about?: string }
+export type SendOptions = MessageType | { type?: MessageType, replyTo?: string, about?: string, files?: string[] }
 
 const outgoing = (text: string, options: SendOptions): Outgoing =>
-  typeof options === 'string' ? { text, type: options } : { text, type: options.type ?? 'note', replyTo: options.replyTo, about: options.about }
+  typeof options === 'string' ? { text, type: options } : { text, type: options.type ?? 'note', replyTo: options.replyTo, about: options.about, files: options.files }
 
-export const createAgent = (deps: AgentDeps) => {
+export const createAgent = (deps: AgentDepsInput) => {
   const s = createState(deps)
   let markReady = () => {}
   const ready = new Promise<void>((resolve) => { markReady = resolve })

@@ -1,10 +1,13 @@
 // What one agent holds while it runs, and the helpers every action shares.
+import { homedir } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { formatAddress, generateName, type Kind } from '../../claude-code/hooks/lib/address.ts'
 import { createRelay, type Fetch, type InboxMessage, type Relay, type Result } from '../../claude-code/hooks/lib/relay.ts'
 import { loadAuth, saveAuth, type Auth, type Identity } from './config.ts'
 
-export interface AgentDeps { fetch: Fetch, dir: string, serverUrl: string, cwd: string }
+// home: where received files are saved (~/.clawalkietalkie/inbox); the user's home folder unless given.
+export interface AgentDepsInput { fetch: Fetch, dir: string, serverUrl: string, cwd: string, home?: string }
+export interface AgentDeps extends AgentDepsInput { home: string }
 
 export interface AgentState {
   deps: AgentDeps
@@ -24,9 +27,9 @@ export interface AgentState {
 
 export const SIGN_IN = 'Not signed in to clawalkietalkie. Ask the user for their email and call the login tool.'
 
-export const createState = (deps: AgentDeps): AgentState => ({
-  deps,
-  auth: loadAuth(deps.dir),
+export const createState = (input: AgentDepsInput): AgentState => ({
+  deps: { ...input, home: input.home ?? homedir() },
+  auth: loadAuth(input.dir),
   kind: 'cx',
   identity: { name: '', instanceId: '' },
   buffer: [],

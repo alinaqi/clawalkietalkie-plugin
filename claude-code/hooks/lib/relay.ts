@@ -4,10 +4,11 @@
 import { createCall, type Fetch, type RelayConfig } from './relay-core.ts'
 import { sessionCalls } from './relay-sessions.ts'
 import { teamCalls } from './relay-teams.ts'
+import { fileCalls } from './relay-files.ts'
 
 export type { Fetch, FetchInit, RelayConfig, Result } from './relay-core.ts'
 export type {
-  AgentState, AgentStatus, Approval, ClaimBody, InboxMessage, InboxPage, InboxQuery, Invite, MessageType, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
+  AgentState, AgentStatus, Approval, ClaimBody, InboxFile, InboxMessage, InboxPage, InboxQuery, Invite, MessageType, SavedFile, SendBody, Sent, SessionInfo, StatusBody, TeamAgent, TeamDetail, TeamInfo
 } from './relay-types.ts'
 
 export const createRelay = (fetch: Fetch, config: RelayConfig) => {
@@ -20,7 +21,8 @@ export const createRelay = (fetch: Fetch, config: RelayConfig) => {
     autoApprove: () => call<{ on: boolean }>('GET', '/v1/settings/auto-approve'),
     setAutoApprove: (on: boolean) => call<{ on: boolean }>('PUT', '/v1/settings/auto-approve', { on }),
     ...sessionCalls(call),
-    ...teamCalls(call)
+    ...teamCalls(call),
+    files: fileCalls(fetch, config)
   }
 }
 

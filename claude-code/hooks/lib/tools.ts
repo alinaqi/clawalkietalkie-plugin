@@ -28,7 +28,13 @@ export const SEND_TOOL: ToolSpec = {
         description: 'The id of the message this answers, when it answers one this session received; ' +
           'it threads the reply under that message. Only for a message from the same address.'
       },
-      about: { type: 'string', description: 'The project the message concerns, as who shows it; the relay refuses it for an agent on another' }
+      about: { type: 'string', description: 'The project the message concerns, as who shows it; the relay refuses it for an agent on another' },
+      files: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Paths of files in this project to send with it (images or text, at most 5; never secrets, dotfiles or ignored ' +
+          'files). Files to anyone but the user\'s own agents wait for the user\'s approval.'
+      }
     },
     required: ['to', 'text']
   },

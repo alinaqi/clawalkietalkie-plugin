@@ -1,5 +1,6 @@
 // Sending: to the person's own agents by name, or to a teammate's by name@team.
 
+import { uploadFiles } from './files-out.ts'
 import type { EngineInterface } from 'claude-code'
 import { formatAddress, formatTarget, parseTarget, suggestName, type Target } from './address.ts'
 import { SIGN_IN, why } from './actions.ts'
@@ -12,7 +13,8 @@ import { relayOf, type Talkie } from './talkie.ts'
 // type: 'note' (the default) informs; 'request' asks the receiver to do something.
 // replyTo: the id of the received message this answers. key: an Idempotency-Key, so a retry never sends twice.
 // about: the project the message concerns, so the relay refuses it for an agent on another.
-export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string, replyTo?: string, key?: string, about?: string }
+// files: paths in this session's project to send with the message.
+export interface Outgoing { to: string, text: string, isAnswer: boolean, type?: string, replyTo?: string, key?: string, about?: string, files?: string[] }
 
 // A send with a key is retried at once when the relay is unreachable or failing; the key makes that safe.
 const ATTEMPTS = 3
@@ -51,7 +53,9 @@ export async function sendMessage ($: EngineInterface, t: Talkie, out: Outgoing)
   if (!isMessageType(type)) return 'Not sent: the type is note or request.'
   const { name: from, instanceId } = t.identity
   const hop = out.isAnswer ? replyHop(t, target) : 0
-  const extra = { ...(out.replyTo ? { replyTo: out.replyTo } : {}), ...(out.about ? { about: out.about } : {}) }
+  const uploaded = out.files?.length ? await uploadFiles($, t, out.files) : { ids: [] }
+  if ('error' in uploaded) return uploaded.error
+  const extra = { ...(out.replyTo ? { replyTo: out.replyTo } : {}), ...(out.about ? { about: out.about } : {}), ...(uploaded.ids.length ? { files: uploaded.ids } : {}) }
   const res = await post($, t, { body: { from, instanceId, to: formatTarget(target), text: out.text, hop, type, ...extra }, key: out.key })
   if (res.ok && out.replyTo) t.replied.add(out.replyTo)
   if (res.ok) return sent(res.value, target)

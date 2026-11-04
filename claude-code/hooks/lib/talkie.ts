@@ -15,6 +15,8 @@ export interface Talkie {
   options: Options
   sessionId: string
   cwd: string
+  // The session's working directory, in full: files are sent only from inside it.
+  root: string
   auth: Auth | undefined
   identity: Identity
   isListening: boolean
@@ -50,7 +52,8 @@ const newInstanceId = (): string => {
 
 export const freshName = (): string => generateName(randomFloat)
 
-export async function loadTalkie ($: EngineInterface, options: Options, cwd: string): Promise<Talkie> {
+export async function loadTalkie ($: EngineInterface, options: Options, place: { cwd: string, root: string }): Promise<Talkie> {
+  const { cwd, root } = place
   const sessionId = await $.session.id()
   const stored = await $.store.get(identityKey(sessionId)) as Identity | undefined
   const identity = stored ?? { name: freshName(), instanceId: newInstanceId() }
@@ -60,7 +63,7 @@ export async function loadTalkie ($: EngineInterface, options: Options, cwd: str
   const cursor = await $.store.get(cursorKey(identity)) as string | undefined
   const fresh = { isListening: false, held: [], context: [], seen: new Set<string>(), backoffMs: 0, hops: new Map<string, number>() }
   const replies = { awaiting: [], turns: new Map<string, InboxMessage>(), replied: new Set<string>() }
-  return { options, sessionId, cwd, auth, identity, pendingEmail, cursor, ...fresh, ...replies }
+  return { options, sessionId, cwd, root, auth, identity, pendingEmail, cursor, ...fresh, ...replies }
 }
 
 export async function saveAuth ($: EngineInterface, t: Talkie, auth: Auth | undefined): Promise<void> {

@@ -36,13 +36,16 @@ export const createFakeRelay = () => {
     return { status: 204 }
   }
 
+  // An upload's body is the file (text or base64), not JSON.
+  const parseBody = (raw: string): unknown => { try { return JSON.parse(raw) } catch { return raw } }
+
   const fetch = (url: string, init?: Init) => {
     const path = url.replace(/^https?:\/\/[^/]+/, '')
-    const body = init?.body ? JSON.parse(init.body) as Call['body'] : undefined
+    const body = init?.body ? parseBody(init.body) as Call['body'] : undefined
     const call = { method: init?.method ?? 'GET', path, body, headers: lowerKeys(init?.headers) }
     calls.push(call)
     const reply = isEmptyJson(init) ? INVALID : route(call)
-    const text = reply.body === undefined ? '' : JSON.stringify(reply.body)
+    const text = reply.text ?? (reply.body === undefined ? '' : JSON.stringify(reply.body))
     return { status: reply.status, ok: reply.status < 300, headers: {}, text }
   }
 
