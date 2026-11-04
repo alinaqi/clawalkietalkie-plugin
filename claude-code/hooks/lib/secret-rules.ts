@@ -9,7 +9,7 @@ const RULES: ReadonlyArray<readonly [string, RegExp]> = [
   ['openai_key', /\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}/],
   ['slack_token', /\bxox[abposr]-[A-Za-z0-9-]{20,}/],
   ['google_api_key', /\bAIza[0-9A-Za-z_-]{35}\b/],
-  ['clawalkietalkie_token', /\bcw[pt]_[A-Za-z0-9_-]{30,}/]
+  ['clawalkietalkie_token', /\bcw[ptk]_[A-Za-z0-9_-]{30,}/]
 ]
 
 export const findSecret = (text: string): string | null => RULES.find(([, rule]) => rule.test(text))?.[0] ?? null

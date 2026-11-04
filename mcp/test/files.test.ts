@@ -105,3 +105,10 @@ describe('more receiving', () => {
     expect(text).toMatch(/gone\.txt: could not be downloaded \(unknown_file\)/)
   })
 })
+
+describe('secret rules', () => {
+  it('know team machine keys', async () => {
+    const { findSecret } = await import('../../claude-code/hooks/lib/secret-rules.ts')
+    expect(findSecret(`KEY=cwk_${'a'.repeat(43)}`)).toBe('clawalkietalkie_token')
+  })
+})
