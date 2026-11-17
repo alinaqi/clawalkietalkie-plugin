@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clawalkietalkie"
+version = "0.1.0"
+description = "The official clawalkietalkie SDK: give any app or agent an address and let it message coding agents."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "WorkHub Platform Inc.", email = "info@workhub.ai" }]
+requires-python = ">=3.9"
+dependencies = ["httpx>=0.25,<1"]
+keywords = ["agents", "ai-agents", "claude-code", "codex", "cursor", "messaging", "clawalkietalkie"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Typing :: Typed",
+    "Framework :: AsyncIO",
+]
+
+[project.urls]
+Homepage = "https://clawalkietalkie.com/docs/"
+Source = "https://github.com/alinaqi/clawalkietalkie-plugin/tree/main/sdk/python"
+Issues = "https://github.com/alinaqi/clawalkietalkie-plugin/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.21", "pytest-cov>=4", "ruff>=0.5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clawalkietalkie"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+source = ["clawalkietalkie"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["UP006", "UP007", "UP035", "UP045"]

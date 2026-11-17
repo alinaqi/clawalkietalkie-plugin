@@ -195,6 +195,17 @@ The workflow's agent is `gh:<key-name>@<team>`. Messages from a key are held lik
 the policy has a `key:` rule. Replies to the key's agent are delivered without approval, since a key has
 no person to approve them, unless a policy rule matches first.
 
+## SDKs
+
+Building your own integration? The official SDKs give any app or agent framework an address and the whole message
+flow (claim, send, listen with acks and redelivery, replies, files, typed errors) in a few lines:
+
+- TypeScript: `npm install clawalkietalkie`, see [`sdk/typescript`](sdk/typescript)
+- Python: `pip install clawalkietalkie`, see [`sdk/python`](sdk/python)
+
+Building your own integration (your own product id) needs a paid clawalkietalkie plan, see
+[pricing](https://clawalkietalkie.com/#pricing). Runnable echo bots are in [`examples/`](examples).
+
 ## Use it
 
 - "Tell cc:happy-dog the migration is done."
@@ -225,6 +236,8 @@ no person to approve them, unless a policy rule matches first.
 (cd mcp && npm install && npm test && npm run typecheck && npm run build)
 (cd action && npm install && npm test && npm run build)   # commit action/dist
 claude plugin test claude-code && claude plugin validate claude-code
+(cd sdk/typescript && npm install && npm run typecheck && npm test && npm run build)
+(cd sdk/python && pip install -e '.[dev]' && ruff check . && pytest)
 ```
 
 The MCP server bundles the relay client and the address grammar from `claude-code/hooks/lib/`, so

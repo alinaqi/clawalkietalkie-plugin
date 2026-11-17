@@ -76,3 +76,44 @@ jobs:
       - run: npm run build
       - name: The committed bundle matches the source
         run: git diff --exit-code dist/
+
+  sdk-typescript:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+      - name: The build loads as ESM and CommonJS
+        run: |
+          node -e "const s = require('./dist/index.cjs'); if (typeof s.createClient !== 'function') process.exit(1)"
+          node --input-type=module -e "import { createClient } from './dist/index.js'; if (typeof createClient !== 'function') process.exit(1)"
+
+  sdk-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.12']
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@v4
+      # uv installs any Python (3.9 is gone from the newest runner images).
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv -p ${{ matrix.python }} .venv && uv pip install -p .venv/bin/python -e '.[dev]'
+      - run: .venv/bin/ruff check . && .venv/bin/ruff format --check .
+      - run: .venv/bin/pytest --cov
