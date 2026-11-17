@@ -8,6 +8,11 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ## [Unreleased]
 
+### Changed
+- A send to a team agent of another account shows the relay's notice: whose agent it is, that your own agent of the
+  same name is a different session, and who was emailed when it is offline (mod and MCP server).
+- `who` marks a team agent of another account named like one of yours: `not your cc:<name>`.
+
 ### Added
 
 - Files (Claude Code mod 0.8.0, MCP server 0.6.0): the send tool takes `files`, paths in the session's project. Each must

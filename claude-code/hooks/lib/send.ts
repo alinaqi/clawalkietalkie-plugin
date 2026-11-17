@@ -26,13 +26,16 @@ const isMessageType = (type: string): type is MessageType => type === 'note' || 
 
 const addressOf = (target: Target): string => formatAddress(target.name, target.kind ?? 'cc', target.team)
 
-const sent = (value: Sent, target: Target): string => {
+const plainSent = (value: Sent, target: Target): string => {
   const to = value.to ?? addressOf(target)
   if (value.delivery === 'held') return `Sent to ${to}; held until its owner approves it.`
   const emailed = value.ownerNotified ? ' Its owner was emailed so they can bring it back.' : ''
   if (value.closed) return `Sent, but ${to} has closed (its session ended); it gets this if it resumes within 24 h.${emailed}`
   return `Sent to ${to}${value.online ? '.' : ' (offline now; delivered when it is back, within 24 h).'}${emailed}`
 }
+
+const sent = (value: Sent, target: Target): string =>
+  value.notice ? `${plainSent(value, target)} ${value.notice}` : plainSent(value, target)
 
 const refused = (res: Extract<Result<unknown>, { ok: false }>, target: Target, replyTo?: string): string => {
   if (res.error === 'invalid_reply_to') return `Not sent: ${replyTo ?? 'that id'} is not a message this session received from ${addressOf(target)}.`

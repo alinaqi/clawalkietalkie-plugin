@@ -34,3 +34,11 @@ test('a send says when the receiver\'s owner was emailed', async ($, on) => {
   await start($)
   expect((await $.tool.call({ tool: SEND, to: 'cc:fuzzy-mole', text: 'merged' })).result).toMatch(/its owner was emailed/i)
 })
+
+test('a send shows the relay\'s notice about another account\'s team agent, held or not', async ($, on) => {
+  const { relay } = setup(on, SIGNED_IN)
+  const notice = 'cc:jolly-lynx@palgu is b@x.io\'s agent (shared in palgu), not one of yours.'
+  relay.override('POST /v1/messages', { status: 201, body: { id: 'm1', online: true, to: 'cc:jolly-lynx@palgu', delivery: 'held', status: 'held', notice } })
+  await start($)
+  expect((await $.tool.call({ tool: SEND, to: 'cc:jolly-lynx@palgu', text: 'hi' })).result).toContain(notice)
+})
