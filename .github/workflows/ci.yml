@@ -103,6 +103,7 @@ jobs:
 
   sdk-python:
     strategy:
+      fail-fast: false
       matrix:
         python: ['3.9', '3.12']
     runs-on: ubuntu-latest
@@ -111,9 +112,8 @@ jobs:
         working-directory: sdk/python
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-      - run: pip install -e '.[dev]'
-      - run: ruff check . && ruff format --check .
-      - run: pytest --cov
+      # uv installs any Python (3.9 is gone from the newest runner images).
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv -p ${{ matrix.python }} .venv && uv pip install -p .venv/bin/python -e '.[dev]'
+      - run: .venv/bin/ruff check . && .venv/bin/ruff format --check .
+      - run: .venv/bin/pytest --cov
