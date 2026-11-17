@@ -33,3 +33,10 @@ it('says which account it is signed in as, and when an owner was emailed', async
   relay.override('POST /v1/messages', { status: 201, body: { id: 'm1', online: false, ownerNotified: true, to: 'cc:x', status: 'queued' } })
   expect(await agent.send('cc:x', 'merged')).toMatch(/its owner was emailed/i)
 })
+
+it('shows the relay\'s notice about another account\'s team agent', async () => {
+  const { agent, relay } = await agentWith()
+  const notice = 'cc:x@acme is b@x.io\'s agent (shared in acme), not one of yours.'
+  relay.override('POST /v1/messages', { status: 201, body: { id: 'm1', online: true, to: 'cc:x@acme', delivery: 'held', status: 'held', notice } })
+  expect(await agent.send('cc:x@acme', 'hi')).toContain(notice)
+})

@@ -27,8 +27,9 @@ export interface TeamAgent { address: string, owner: string, online: boolean, st
 export interface TeamDetail extends TeamInfo { members: Array<{ email: string, role: string }>, agents: TeamAgent[] }
 export interface Invite { id: string, team: string, name: string, role: string, invitedBy: string }
 export interface Approval { id: string, from: string, fromEmail: string, to: string, text: string, sentAt: number }
+// notice: the relay's word on a team agent of another account (whose it is); shown as is.
 export interface Sent {
-  id: string, online: boolean, closed?: boolean, ownerNotified?: boolean, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
+  id: string, online: boolean, closed?: boolean, ownerNotified?: boolean, notice?: string, to?: string, delivery?: 'prompt' | 'context' | 'held', type?: MessageType, status?: 'queued' | 'held', thread?: string
 }
 // client: the product id (claude-code, codex); the relay assigns its prefix.
 export interface ClaimBody { instanceId: string, kind?: string, client?: string, host?: string, cwd?: string }

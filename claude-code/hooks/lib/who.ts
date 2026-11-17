@@ -2,7 +2,7 @@
 // The MCP server bundles this file too.
 
 import { formatAddress } from './address.ts'
-import type { AgentStatus, Relay, Result, SessionInfo, StatusBody, TeamDetail } from './relay.ts'
+import type { AgentStatus, Relay, Result, SessionInfo, StatusBody, TeamAgent, TeamDetail } from './relay.ts'
 
 // account: the email this machine is signed in as, shown first so a wrong sign-in is obvious.
 export interface At { self: string, now: number, account?: string }
@@ -36,8 +36,18 @@ export const formatWho = (sessions: readonly SessionInfo[], at: At): string => {
   }).join('\n')
 }
 
-export const formatTeam = (team: TeamDetail): string => {
-  const agents = team.agents.map((a) => line(a.online, [a.address, a.owner, a.status && statusText(a.status)]))
+// A teammate's agent named like one of the person's own is marked, so the two are never taken for one session.
+const nameOf = (address: string): string => address.slice(address.indexOf(':') + 1).split('@')[0] ?? ''
+
+const notYours = (agent: TeamAgent, own?: Own): string | null => {
+  const mine = own && agent.owner !== own.account ? own.sessions.find((s) => nameOf(s.address) === nameOf(agent.address)) : undefined
+  return mine ? `not your ${mine.address}` : null
+}
+
+export interface Own { account: string, sessions: readonly SessionInfo[] }
+
+export const formatTeam = (team: TeamDetail, own?: Own): string => {
+  const agents = team.agents.map((a) => line(a.online, [a.address, a.owner, notYours(a, own), a.status && statusText(a.status)]))
   return [`Team ${team.slug}:`, ...(agents.length > 0 ? agents : ['(no agents shared yet)'])].join('\n')
 }
 
@@ -46,7 +56,8 @@ export const describeWho = async (relay: Relay, at: At): Promise<Result<string>>
   const [sessions, teams] = await Promise.all([relay.list(), relay.teams()])
   if (!sessions.ok) return sessions
   const details = teams.ok ? await Promise.all((teams.value ?? []).map((team) => relay.team(team.slug))) : []
-  const sections = details.flatMap((d) => d.ok ? [formatTeam(d.value)] : [])
+  const own = at.account ? { account: at.account, sessions: sessions.value } : undefined
+  const sections = details.flatMap((d) => d.ok ? [formatTeam(d.value, own)] : [])
   const account = at.account ? [`Signed in as ${at.account}.`] : []
   return { ok: true, value: [...account, formatWho(sessions.value, at), ...sections].join('\n\n') }
 }

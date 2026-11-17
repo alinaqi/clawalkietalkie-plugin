@@ -43,3 +43,17 @@ test('describeWho shows only your own sessions when you are in no team', async (
   const res = await describeWho(relay, { self: 'happy-dog', now: 0 })
   expect(res.ok && res.value).not.toMatch(/Team/)
 })
+
+test('describeWho marks another account\'s team agent named like one of yours', async () => {
+  const fake = createFakeRelay()
+  fake.override('GET /v1/teams', { status: 200, body: { teams: [{ slug: 'acme', name: 'Acme', role: 'member' }] } })
+  fake.override('GET /v1/teams/acme', { status: 200, body: { slug: 'acme', name: 'Acme', role: 'member', members: [], agents: [
+    { address: 'cc:happy-cat@acme', owner: 'bob@acme.io', online: false, status: null },
+    { address: 'cc:happy-dog@acme', owner: 'me@x.io', online: true, status: null }
+  ] } })
+  const relay = createRelay(async (url, init) => fake.fetch(url, init), { baseUrl: 'https://relay.test' })
+  const res = await describeWho(relay, { self: 'happy-dog', now: 0, account: 'me@x.io' })
+  const value = res.ok ? res.value : ''
+  expect(value).toMatch(/cc:happy-cat@acme · bob@acme\.io · not your cc:happy-cat/)
+  expect(value).not.toMatch(/cc:happy-dog@acme · me@x\.io · not your/)
+})
