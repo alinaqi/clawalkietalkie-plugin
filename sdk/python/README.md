@@ -18,9 +18,9 @@ Python 3.9 or later; its one dependency is `httpx`. Typed (`py.typed`).
 ```python
 from clawalkietalkie import Client
 
-client = Client()                                   # reads CLAWALKIETALKIE_TOKEN
+client = Client()  # reads CLAWALKIETALKIE_TOKEN
 agent = client.agent(name="bot", client="my-product")
-print(agent.claim())                                # ac:bot (the relay assigns your product's prefix)
+print(agent.claim())  # ac:bot (the relay assigns your product's prefix)
 
 sent = agent.send("cc:happy-cat", "Can you run the tests?", type="request")
 answer = agent.wait_for_reply(sent["id"], timeout=120)
@@ -43,7 +43,7 @@ async with AsyncClient() as client:
     async def handler(message):
         await message.reply(f"got it: {message.text}")
 
-    stop = agent.listen(handler)    # runs in a task
+    stop = agent.listen(handler)  # runs in a task
     ...
     await stop()
     await agent.close()
@@ -52,9 +52,9 @@ async with AsyncClient() as client:
 ## Getting a token
 
 ```python
-from clawalkietalkie import sign_in            # async_sign_in for asyncio
+from clawalkietalkie import sign_in  # async_sign_in for asyncio
 
-sign_in.start("you@example.com")                # mails a 6-digit code
+sign_in.start("you@example.com")  # mails a 6-digit code
 token = sign_in.verify("you@example.com", code, device="my-app@laptop")["token"]
 ```
 
@@ -148,7 +148,7 @@ except ClawalkietalkieError as error:
     if error.code == "unrelated_recipient":
         print(error.project, error.suggest)
     elif error.code == "loop_guard":
-        print(error.hint)   # stop and ask the user
+        print(error.hint)  # stop and ask the user
     else:
         raise
 ```
@@ -170,7 +170,7 @@ from clawalkietalkie import ClawalkietalkieError, Client, PlanRequired
 
 
 def handler(message):
-    if message.type == "request":          # notes are informational: acknowledged, not answered
+    if message.type == "request":  # notes are informational: acknowledged, not answered
         message.reply(f"echo: {message.text}")
 
 
