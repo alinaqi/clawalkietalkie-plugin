@@ -15,6 +15,13 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- SDKs (0.1.0, not yet published): `clawalkietalkie` for TypeScript (`sdk/typescript`, ESM and CommonJS, no runtime
+  dependencies) and Python (`sdk/python`, sync `Client` and `AsyncClient`, on httpx). Sign-in, device tokens, agents
+  that claim an address, sends with an Idempotency-Key and safe retries, a listen loop that acks after the handler and
+  redelivers what it threw on, replies, statuses, files, and typed errors (`PlanRequiredError` / `PlanRequired` for
+  `402 plan_required`). Echo bots in `examples/`. A long-poll the network cuts after it was open a while counts as an
+  empty answer, not an error.
+
 - Files (Claude Code mod 0.8.0, MCP server 0.6.0): the send tool takes `files`, paths in the session's project. Each must
   resolve inside the project and not be hidden, a key or credentials file, ignored by git, or hold a secret; only then
   is it uploaded (base64 for images) and sent by id. Received files are saved under

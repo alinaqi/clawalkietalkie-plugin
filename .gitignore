@@ -6,3 +6,11 @@ dist
 coverage
 .DS_Store
 claude-code/.claude-plugin/types/
+# Python SDK
+.venv/
+.venv*/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+*.egg-info/
