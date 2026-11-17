@@ -11,6 +11,7 @@ from . import _messages as m
 from ._address import generate_name, is_valid_name
 from ._http import Http
 from ._listen import Listener
+from ._streams import Streams
 from ._types import InboxPage, ReplyWait, SentMessage, UploadedFile
 from .errors import CUT_AFTER, ClawalkietalkieError, is_cut
 
@@ -50,7 +51,7 @@ class AgentBase:
         self.name = generate_name(random.random)
 
 
-class Agent(AgentBase):
+class Agent(AgentBase, Streams):
     def __init__(self, http: Http, options: Dict[str, Any]) -> None:
         super().__init__(options)
         self._http = http
@@ -134,7 +135,8 @@ class Agent(AgentBase):
 
     def listen(self, handler: Any, **options: Any) -> Listener:
         """Calls handler(message) for each message in a background thread; the answer stops it when called.
-        options: wait_seconds (25), backoff ((1.0, 30.0) seconds), on_error(error, info), random."""
+        options: wait_seconds (25), backoff ((1.0, 30.0) seconds), on_error(error, info), random, and
+        on_update(update): also read the feed of followed agents, in a thread of its own; stop() ends both."""
         listener = Listener(self, handler, options)
         self._listeners.append(listener)
         return listener.start(self._http.fork())

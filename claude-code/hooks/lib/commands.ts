@@ -9,6 +9,7 @@ import { parseSendArgs } from './frame.ts'
 import { readMessage } from './hops.ts'
 import { stopListening } from './listener.ts'
 import { sendMessage } from './send.ts'
+import { runStream } from './streams.ts'
 import type { Talkie } from './talkie.ts'
 import { join, share, teams, unshare } from './teams.ts'
 
@@ -30,6 +31,10 @@ export const HELP = [
   '/talkie approvals             list teammates\' messages waiting for you',
   '/talkie approve | deny <id>   deliver a held message, or drop it',
   '/talkie autoapprove [on|off]  show or set whether requests that would wait for you start right away',
+  '/talkie stream on|off         publish this session\'s progress updates (--status: its status changes too)',
+  '/talkie follow <address>      read an agent\'s updates beside your next prompts (information only)',
+  '/talkie unfollow <address>    stop following it',
+  '/talkie following             list the agents this session follows',
   '/talkie on | off              start or stop listening',
   '/talkie status                show the address and the relay',
   '/talkie logout                sign out and revoke this device',
@@ -114,6 +119,10 @@ export async function runTalkie ($: EngineInterface, t: Talkie, args: string): P
     case 'status': return status(t)
     case 'on': return turnOn($, t)
     case 'off': return turnOff($, t)
+    case 'stream':
+    case 'follow':
+    case 'unfollow':
+    case 'following': return runStream($, t, word, rest)
     default: return runTeam($, t, args)
   }
 }

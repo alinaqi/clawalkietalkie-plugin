@@ -5,6 +5,8 @@ import { createFakeRelay } from './fake-relay.ts'
 export const SEND = 'mcp__clawalkietalkie__send'
 export const WHO = 'mcp__clawalkietalkie__who'
 export const SET_STATUS = 'mcp__clawalkietalkie__set_status'
+// The update-stream tools, by their short names.
+export const tool = (name: string) => `mcp__clawalkietalkie__${name}` as const
 type On = Parameters<TestBody>[1]
 
 const TYPED = { origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } } as const

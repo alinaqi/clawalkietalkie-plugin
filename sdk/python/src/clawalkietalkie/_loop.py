@@ -8,6 +8,9 @@ from typing import Any, Callable, Dict, List, Optional
 from ._backoff import DEFAULT_BACKOFF, Backoff, jitter, next_backoff
 from .errors import CUT_AFTER, ClawalkietalkieError, is_cut
 
+# invalid_cursor, or invalid_request from a relay before that code.
+_BAD_CURSOR = ("invalid_cursor", "invalid_request")
+
 REMEMBER = 1000
 
 
@@ -55,9 +58,7 @@ class LoopState:
 
     def cursor_refused(self, error: BaseException) -> bool:
         """A cursor the relay no longer takes: read the whole inbox again."""
-        refused = (
-            self.cursor is not None and isinstance(error, ClawalkietalkieError) and error.code == "invalid_request"
-        )
+        refused = self.cursor is not None and isinstance(error, ClawalkietalkieError) and error.code in _BAD_CURSOR
         if refused:
             self.cursor = None
         return refused

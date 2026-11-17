@@ -2,6 +2,7 @@
 // enough to drive the SDK. `fail` queues a one-off answer (or a network error) for the next matching call.
 import { routes } from './fake-routes.ts'
 import { pushInbox } from './fake-messages.ts'
+import { createStreamState, type StreamState } from './fake-streams.ts'
 
 export interface Call { method: string, path: string, query: URLSearchParams, headers: Record<string, string>, body: unknown }
 export interface Queued { method?: string, path: RegExp, status: number, body?: unknown, network?: boolean, afterMs?: number }
@@ -20,13 +21,14 @@ export interface FakeState {
   ids: number
   waiters: Set<() => void>
   waitScaleMs: number
+  streams: StreamState
 }
 
 export const TOKEN = 'tok_test_secret'
 
 const createState = (): FakeState => ({
   calls: [], failures: [], sessions: new Map(), inboxes: new Map(), statuses: new Map(), files: new Map(), keys: new Map(),
-  seq: 0, ids: 0, waiters: new Set(), waitScaleMs: 5
+  seq: 0, ids: 0, waiters: new Set(), waitScaleMs: 5, streams: createStreamState()
 })
 
 const json = (status: number, body?: unknown): Response =>

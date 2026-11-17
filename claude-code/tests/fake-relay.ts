@@ -1,6 +1,7 @@
 // A stateful stand-in for the relay server, answering the mod's $.http.fetch. The MCP tests use it too.
 
 import { createFakeInbox } from './fake-inbox.ts'
+import { createFakeStreams } from './fake-streams.ts'
 import { autoApprove, claim, inboxMessage, INVALID, LISTS, verify, type Call, type Extra, type Reply } from './fake-routes.ts'
 
 export { BASELINE, type Call, type Extra, type Reply } from './fake-routes.ts'
@@ -20,12 +21,15 @@ export const createFakeRelay = () => {
   const overrides = new Map<string, Reply>()
   const taken = new Set<string>()
   const settings = { autoApprove: true }
+  const streams = createFakeStreams()
 
   const route = (call: Call): Reply => {
     const [bare = '', query = ''] = call.path.split('?')
     const key = `${call.method} ${bare}`
     const fixed = overrides.get(key) ?? LISTS[key]
     if (fixed) return fixed
+    const streamed = streams.route(key, new URLSearchParams(query), call.body)
+    if (streamed) return streamed
     if (key === 'POST /v1/auth/otp') return { status: 202, body: {} }
     if (key === 'POST /v1/auth/verify') return verify(call.body)
     if (key.endsWith(' /v1/settings/auto-approve')) return autoApprove(call.method, call.body, settings)
@@ -53,6 +57,7 @@ export const createFakeRelay = () => {
     fetch,
     calls,
     settings,
+    streams,
     deliver: (from: string, text: string, hop?: number, extra: Extra = {}) =>
       inbox.push(inboxMessage({ id: inbox.nextId(), from, text, hop }, extra)),
     // Messages delivered and not yet acked.

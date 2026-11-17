@@ -1,11 +1,14 @@
 export { createClient, Client, type ClientOptions } from './client.ts'
 export { Agent, type AgentOptions } from './agent.ts'
 export { signIn, type SignInOptions, type VerifyOptions } from './sign-in.ts'
-export { ClawalkietalkieError, PlanRequiredError, isClawalkietalkieError, type ErrorCode } from './errors.ts'
+export {
+  ClawalkietalkieError, PlanRequiredError, NotStreamingError, BlockedByPublisherError, FollowLimitError, FollowerLimitError, TextTooLongError, InvalidCursorError, isClawalkietalkieError, type ErrorCode
+} from './errors.ts'
 export { parseAddress, formatAddress, isValidName, isKind, generateName, type Address } from './address.ts'
 export type { IncomingMessage } from './message.ts'
-export type { Handler, ListenOptions, ListenErrorInfo } from './listen.ts'
+export type { Handler, ListenOptions, ListenErrorInfo, UpdateHandler } from './listen.ts'
 export type { WaitOptions } from './messaging.ts'
+export type { StreamingOptions, UpdatesQuery } from './streams.ts'
 export type { FileSource } from './files.ts'
 export type { Backoff } from './backoff.ts'
 export type { FetchLike } from './http.ts'

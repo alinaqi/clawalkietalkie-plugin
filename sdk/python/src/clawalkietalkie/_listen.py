@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 from ._incoming import IncomingMessage
 from ._loop import LoopState
+from ._updates_loop import UpdatesLoop
 
 Failure = Tuple[BaseException, Optional[IncomingMessage]]
 
@@ -25,29 +26,40 @@ class Listener:
         self._busy = threading.RLock()
         self._thread = threading.Thread(target=self._run, name="clawalkietalkie-listen", daemon=True)
         self._http: Any = None
+        on_update = options.get("on_update")
+        updates_options = {**options, "random": options.get("random") or random.random}
+        self._updates = UpdatesLoop(agent, on_update, updates_options) if on_update else None
 
     def start(self, http: Any) -> "Listener":
+        """http: the inbox loop's own wire; the updates loop forks another."""
         self._http = http
         self._thread.start()
+        if self._updates is not None:
+            self._updates.start(http.fork(), self._stopping)
         return self
 
     @property
     def running(self) -> bool:
-        """False once stop() was called or the loop ended (a poll in flight may still be finishing)."""
-        return self._thread.is_alive() and not self._stopping.is_set()
+        """False once stop() was called or the loops ended (a poll in flight may still be finishing)."""
+        alive = self._thread.is_alive() or (self._updates is not None and self._updates.is_alive())
+        return alive and not self._stopping.is_set()
 
     def __call__(self) -> None:
         self.stop()
 
     def stop(self) -> None:
-        """Stops listening: no handler runs after it returns; it waits for one that is running."""
+        """Stops listening, and the updates loop: no handler runs after it returns; it waits for one that is running."""
         self._stopping.set()
         with self._busy:
             pass
+        if self._updates is not None:
+            self._updates.settle()
 
     def join(self, timeout: Optional[float] = None) -> None:
-        """Waits for the thread itself to end (after the poll in flight, if any, answers)."""
+        """Waits for the threads themselves to end (after the polls in flight, if any, answer)."""
         self._thread.join(timeout)
+        if self._updates is not None:
+            self._updates.join(timeout)
 
     def _handle(self, raw: Dict[str, Any]) -> Optional[Failure]:
         if not self._state.is_new(raw["id"]):

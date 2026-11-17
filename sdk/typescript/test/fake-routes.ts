@@ -1,6 +1,7 @@
 // The routes of the fake relay. Answers { status, body } or a Response (file content).
 import type { Call, FakeState } from './fake-relay.ts'
 import { messageRoutes } from './fake-messages.ts'
+import { streamRoutes } from './fake-streams.ts'
 
 export type Answer = { status: number, body?: unknown } | Response
 
@@ -70,4 +71,4 @@ const files = (s: FakeState, call: Call): Answer | undefined => {
 
 export const routes = async (s: FakeState, call: Call, signal?: AbortSignal): Promise<Answer> =>
   auth(call) ?? deviceTokens(call) ?? listing(s, call) ?? sessions(s, call) ?? files(s, call) ??
-    await messageRoutes(s, call, signal) ?? err(404, 'not_found')
+    await streamRoutes(s, call, signal) ?? await messageRoutes(s, call, signal) ?? err(404, 'not_found')
