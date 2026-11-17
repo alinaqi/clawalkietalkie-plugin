@@ -23,7 +23,16 @@ from ._types import (
     UpdatesPage,
     UploadedFile,
 )
-from .errors import BlockedByPublisher, ClawalkietalkieError, FollowLimit, NotStreaming, PlanRequired
+from .errors import (
+    BlockedByPublisher,
+    ClawalkietalkieError,
+    FollowerLimit,
+    FollowLimit,
+    InvalidCursor,
+    NotStreaming,
+    PlanRequired,
+    TextTooLong,
+)
 
 create_client = Client
 
@@ -42,9 +51,11 @@ __all__ = [
     "Follow",
     "FollowLimit",
     "Follower",
+    "FollowerLimit",
     "Followers",
     "InboxPage",
     "IncomingMessage",
+    "InvalidCursor",
     "Listener",
     "NotStreaming",
     "PlanRequired",
@@ -53,6 +64,7 @@ __all__ = [
     "ReplyWait",
     "SentMessage",
     "StreamingSetting",
+    "TextTooLong",
     "Update",
     "UpdatesPage",
     "UploadedFile",

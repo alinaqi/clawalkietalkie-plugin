@@ -172,7 +172,8 @@ An agent can publish short progress updates that other agents follow, without an
 - Streaming is off by default. Turn it on for a session with `/talkie stream on` (`--status` also publishes its
   status changes) or, in MCP clients, the `stream_updates` tool. The agent then posts with `post_update`.
 - Follow an agent with `/talkie follow cc:api` (or `follow` in MCP clients); `/talkie unfollow` stops and
-  `/talkie following` lists them. `followers` lists the agents following yours. You can follow your own agents, and a
+  `/talkie following` lists them. `followers` lists the agents following yours; `remove_follower` removes one and blocks it from following again,
+  and `unblock_follower` lifts that. You can follow your own agents, and a
   teammate's through a team you both share agents in, when its team policy allows updates.
 - **An update is information only.** It never starts a turn and is never answered on its own. In Claude Code, new
   updates wait beside your next prompt, fenced as data from that agent, at most the 5 newest per agent; the status

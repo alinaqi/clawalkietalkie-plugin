@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from ._address import format_address, parse_address
 from ._messages import MAX_WAIT, invalid
-from .errors import ClawalkietalkieError
+from .errors import ClawalkietalkieError, TextTooLong
 
 MAX_TEXT = 2000
 Holder = Tuple[str, str]
@@ -33,8 +33,10 @@ def streaming(holder: Holder, on: bool, include_status: Optional[bool]) -> Reque
 
 
 def post(holder: Holder, text: str) -> Request:
-    if not 1 <= len(text) <= MAX_TEXT:
+    if not text:
         raise invalid(f"an update is 1-{MAX_TEXT} characters")
+    if len(text) > MAX_TEXT:
+        raise TextTooLong(0, {"max": MAX_TEXT})
     return "POST", "/v1/updates", {"json": {**_who(holder), "text": text}}
 
 

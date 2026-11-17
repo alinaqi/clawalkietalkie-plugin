@@ -7,7 +7,7 @@ import { SIGN_IN } from './actions.ts'
 import { startFeed } from './feed.ts'
 import type { AgentRef } from './relay-updates.ts'
 import {
-  followersText, followingText, followRefusal, listRefusal, MAX_UPDATE_CHARS, postRefusal, streamingText, streamRefusal, TOO_LONG, unfollowRefusal
+  followerRefusal, followersText, followingText, followRefusal, listRefusal, removedText, unblockedText, MAX_UPDATE_CHARS, postRefusal, streamingText, streamRefusal, TOO_LONG, unfollowRefusal
 } from './stream-text.ts'
 import { relayOf, type Talkie } from './talkie.ts'
 
@@ -61,6 +61,18 @@ export async function followers ($: EngineInterface, t: Talkie): Promise<string>
   if (!t.auth) return SIGN_IN
   const res = await relayOf($, t).followers(agentOf(t))
   return res.ok ? followersText({ followers: res.value.followers ?? [], blocked: res.value.blocked ?? [] }, selfAddress(t)) : listRefusal(res)
+}
+
+// Removes a follower (blocking it from following again), or with unblock lifts that block.
+export async function changeFollower ($: EngineInterface, t: Talkie, change: { address: string, unblock: boolean }): Promise<string> {
+  if (!t.auth) return SIGN_IN
+  const target = parseTarget(change.address)
+  if (!target) return notAnAddress(change.address)
+  const relay = relayOf($, t)
+  const follower = formatAddress(target.name, target.kind ?? 'cc', target.team)
+  const res = change.unblock ? await relay.unblockFollower(agentOf(t), formatTarget(target)) : await relay.removeFollower(agentOf(t), formatTarget(target))
+  if (!res.ok) return followerRefusal(res)
+  return change.unblock ? unblockedText(follower, selfAddress(t)) : removedText(follower, selfAddress(t))
 }
 
 const STREAM_USAGE = 'Usage: /talkie stream on|off [--status]  (--status also publishes this session\'s status changes)'

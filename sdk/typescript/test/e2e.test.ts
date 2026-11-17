@@ -2,7 +2,7 @@
 // CLAWALKIETALKIE_E2E_LOG=<the relay's log file>, where the development relay writes sign-in codes.
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { createClient, isClawalkietalkieError, NotStreamingError, PlanRequiredError, signIn, type Client, type Update } from '../src/index.ts'
+import { BlockedByPublisherError, createClient, InvalidCursorError, isClawalkietalkieError, NotStreamingError, TextTooLongError, PlanRequiredError, signIn, type Client, type Update } from '../src/index.ts'
 import { until } from './helpers.ts'
 
 const server = process.env.CLAWALKIETALKIE_E2E_SERVER ?? ''
@@ -96,6 +96,26 @@ describe.skipIf(!isLocal || !log)('end to end against a local relay', () => {
     await stop()
     await follower.unfollow(publisher.address!)
     expect(await follower.following()).toEqual([])
+    await Promise.all([publisher.close(), follower.close()])
+  }, 60_000)
+
+  it('removes a follower, which is blocked until unblocked, and meets the relay\'s cursor code', async () => {
+    const client = await signedIn()
+    const publisher = client.agent({ client: 'codex', cwd: 'sdk' })
+    const follower = client.agent({ client: 'codex', cwd: 'sdk' })
+    await Promise.all([publisher.claim(), follower.claim()])
+    await publisher.setStreaming({ on: true })
+    await follower.follow(publisher.address!)
+    await publisher.removeFollower(follower.address!)
+    const listed = await publisher.followers()
+    expect(listed.followers).toEqual([])
+    expect(listed.blocked.map((b) => b.address)).toEqual([follower.address])
+    expect(await follower.follow(publisher.address!).catch((e: unknown) => e)).toBeInstanceOf(BlockedByPublisherError)
+    await publisher.unblockFollower(follower.address!)
+    expect((await publisher.followers()).blocked).toEqual([])
+    expect((await follower.follow(publisher.address!)).to).toBe(publisher.address)
+    expect(await follower.updates({ after: 'not-a-cursor' }).catch((e: unknown) => e)).toBeInstanceOf(InvalidCursorError)
+    expect(await publisher.postUpdate('x'.repeat(2001)).catch((e: unknown) => e)).toBeInstanceOf(TextTooLongError)
     await Promise.all([publisher.close(), follower.close()])
   }, 60_000)
 })

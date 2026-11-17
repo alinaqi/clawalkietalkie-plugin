@@ -2,7 +2,7 @@ export { createClient, Client, type ClientOptions } from './client.ts'
 export { Agent, type AgentOptions } from './agent.ts'
 export { signIn, type SignInOptions, type VerifyOptions } from './sign-in.ts'
 export {
-  ClawalkietalkieError, PlanRequiredError, NotStreamingError, BlockedByPublisherError, FollowLimitError, isClawalkietalkieError, type ErrorCode
+  ClawalkietalkieError, PlanRequiredError, NotStreamingError, BlockedByPublisherError, FollowLimitError, FollowerLimitError, TextTooLongError, InvalidCursorError, isClawalkietalkieError, type ErrorCode
 } from './errors.ts'
 export { parseAddress, formatAddress, isValidName, isKind, generateName, type Address } from './address.ts'
 export type { IncomingMessage } from './message.ts'

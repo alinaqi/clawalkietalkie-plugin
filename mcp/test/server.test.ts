@@ -28,7 +28,7 @@ describe('the MCP server', () => {
   it('offers the messaging tools and says how to use them', async () => {
     const { client } = await connect('codex-mcp-client')
     const names = (await client.listTools()).tools.map((t) => t.name).sort()
-    expect(names).toEqual(['check_updates', 'discard', 'follow', 'followers', 'following', 'inbox', 'login', 'post_update', 'rename', 'send', 'set_status', 'status', 'stream_updates', 'unfollow', 'verify', 'who'])
+    expect(names).toEqual(['check_updates', 'discard', 'follow', 'followers', 'following', 'inbox', 'login', 'post_update', 'remove_follower', 'rename', 'send', 'set_status', 'status', 'stream_updates', 'unblock_follower', 'unfollow', 'verify', 'who'])
     expect(names.filter((n) => /approv|deny|decide|allow/.test(n))).toEqual([])
     expect(client.getInstructions()).toMatch(/inbox/)
     expect(client.getInstructions()).toMatch(/cc:api@acme/)

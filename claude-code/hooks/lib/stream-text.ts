@@ -14,6 +14,8 @@ const relayWhy = (res: Refused): string =>
 
 const teamOf = (address: string): string => address.includes('@') ? address.split('@')[1]! : 'that team'
 
+const maxOf = (res: Refused): string => typeof res.details?.max === 'number' ? ` (${res.details.max})` : ''
+
 const message = (res: Refused): string | null => typeof res.details?.message === 'string' ? res.details.message : null
 
 const followWhy = (res: Refused, address: string, self: string): string => {
@@ -25,7 +27,8 @@ const followWhy = (res: Refused, address: string, self: string): string => {
     case 'blocked_by_publisher': return `${address} removed ${self} from its followers, so it cannot follow it again unless ${address} unblocks it.`
     case 'not_allowed_for_assistant': return message(res) ?? `${address} is outside what the user lets assistants reach.`
     case 'not_streaming': return `${address} is not streaming updates; it (or its owner) has to turn streaming on first.`
-    case 'follow_limit': return `at most ${String(res.details?.max ?? 'so many')} follows per agent (and 100 followers per agent); unfollow one first.`
+    case 'follow_limit': return `${self} follows as many agents as allowed${maxOf(res)}; unfollow one first.`
+    case 'follower_limit': return `${address} has as many followers as allowed${maxOf(res)}, so it cannot take another.`
     case 'rate_limited': return 'too many follow changes in the last hour (30 at most); try again later.'
     default: return `${relayWhy(res)}.`
   }
@@ -40,6 +43,7 @@ export const unfollowRefusal = (res: Refused): string =>
 export const postRefusal = (res: Refused, self: string): string => {
   if (res.error === 'not_streaming') return `Not posted: ${self} is not streaming. Turn it on with stream_updates first (only if the user wants it).`
   if (res.status === 429) return 'Not posted: at most 60 updates an hour per agent; try again later.'
+  if (res.error === 'text_too_long') return `Not posted: an update is at most ${String(res.details?.max ?? MAX_UPDATE_CHARS)} characters.`
   return res.status === 400 ? TOO_LONG : `Not posted: ${relayWhy(res)}.`
 }
 
@@ -60,5 +64,12 @@ export const followersText = (list: Followers, address: string): string => {
   const blocked = list.blocked?.length ? ['', 'Removed (cannot follow again):', ...list.blocked.map((f) => `- ${f.address}`)] : []
   return [`Followers of ${address}:`, ...followers, ...blocked].join('\n')
 }
+
+export const removedText = (follower: string, address: string): string =>
+  `Removed ${follower} from the followers of ${address}; it cannot follow again until unblock_follower lets it.`
+
+export const unblockedText = (follower: string, address: string): string => `${follower} may follow ${address} again.`
+
+export const followerRefusal = (res: Refused): string => `Followers not changed: ${relayWhy(res)}.`
 
 export const listRefusal = (res: Refused): string => `Could not list them: ${relayWhy(res)}.`

@@ -22,6 +22,10 @@ interface Feed {
 
 const isFatal = (error: unknown): boolean => isClawalkietalkieError(error) && (error.status === 401 || error.code === 'not_holder')
 
+// invalid_cursor, or invalid_request from a relay before that code.
+const isBadCursor = (error: unknown): boolean =>
+  isClawalkietalkieError(error, 'invalid_cursor') || isClawalkietalkieError(error, 'invalid_request')
+
 const report = (feed: Feed, error: unknown, delayMs: number): void =>
   feed.options.onError?.(error, { delayMs, fatal: isFatal(error) })
 
@@ -43,7 +47,7 @@ const round = async (feed: Feed): Promise<{ error: unknown } | undefined> => {
     return undefined
   } catch (error) {
     if (isCut(error, Date.now() - started, feed.options.cutAfterMs)) return undefined
-    if (feed.cursor && isClawalkietalkieError(error, 'invalid_request')) { feed.cursor = undefined; return undefined }
+    if (feed.cursor && isBadCursor(error)) { feed.cursor = undefined; return undefined }
     return { error }
   }
 }

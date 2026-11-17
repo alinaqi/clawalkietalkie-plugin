@@ -82,13 +82,13 @@ describe('listen with onUpdate', () => {
     expect(errors).toHaveLength(1)
   })
 
-  it('reads the feed from the start when the relay refuses the cursor, without handing an update twice', async () => {
+  it.each(['invalid_cursor', 'invalid_request'])('reads the feed from the start when the relay refuses the cursor (%s), without handing an update twice', async (code) => {
     const { relay, publisher, follower } = await following()
     const seen: number[] = []
     const stop = follower.listen(async () => {}, { ...FAST, onUpdate: (u) => { seen.push(u.id) } })
     await publisher.postUpdate('one')
     await until(() => seen.length === 1)
-    relay.fail({ path: /^\/v1\/updates$/, method: 'GET', status: 400, body: { error: 'invalid_request' } })
+    relay.fail({ path: /^\/v1\/updates$/, method: 'GET', status: 400, body: { error: code } })
     await publisher.postUpdate('two')
     await until(() => seen.length === 2)
     await stop()

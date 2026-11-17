@@ -3,7 +3,7 @@
 import { formatAddress, formatTarget, parseTarget, type Target } from '../../claude-code/hooks/lib/address.ts'
 import type { AgentRef } from '../../claude-code/hooks/lib/relay-updates.ts'
 import {
-  followersText, followingText, followRefusal, listRefusal, MAX_UPDATE_CHARS, postRefusal, streamingText, streamRefusal, TOO_LONG, unfollowRefusal
+  followerRefusal, followersText, followingText, followRefusal, listRefusal, removedText, unblockedText, MAX_UPDATE_CHARS, postRefusal, streamingText, streamRefusal, TOO_LONG, unfollowRefusal
 } from '../../claude-code/hooks/lib/stream-text.ts'
 import { frameUpdates } from '../../claude-code/hooks/lib/updates-frame.ts'
 import { loadUpdatesCursor, saveUpdatesCursor } from './config.ts'
@@ -59,6 +59,17 @@ export const followers = async (s: AgentState): Promise<string> => {
   if (!s.auth) return SIGN_IN
   const res = await relayOf(s).followers(agentOf(s))
   return res.ok ? followersText({ followers: res.value.followers ?? [], blocked: res.value.blocked ?? [] }, selfOf(s)) : listRefusal(res)
+}
+
+// Removes a follower (blocking it from following again), or with unblock lifts that block.
+export const changeFollower = async (s: AgentState, change: { address: string, unblock: boolean }): Promise<string> => {
+  if (!s.auth) return SIGN_IN
+  const target = parseTarget(change.address)
+  if (!target) return notAnAddress(change.address)
+  const relay = relayOf(s)
+  const res = change.unblock ? await relay.unblockFollower(agentOf(s), formatTarget(target)) : await relay.removeFollower(agentOf(s), formatTarget(target))
+  if (!res.ok) return followerRefusal(res)
+  return change.unblock ? unblockedText(addressOf(target), selfOf(s)) : removedText(addressOf(target), selfOf(s))
 }
 
 // The feed since the stored cursor, without waiting; a cursor the relay rejects is dropped and the feed read again.

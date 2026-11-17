@@ -6,7 +6,7 @@ import { inbox, pollOnce, send, setStatus, who } from './mail.ts'
 import type { Outgoing } from './mail.ts'
 import { login, rename, start, status, verify } from './session.ts'
 import { createState, type AgentDepsInput } from './state.ts'
-import { checkUpdates, follow, followers, following, postUpdate, streamUpdates, unfollow } from './streams.ts'
+import { changeFollower, checkUpdates, follow, followers, following, postUpdate, streamUpdates, unfollow } from './streams.ts'
 
 export type { AgentDeps, AgentDepsInput } from './state.ts'
 
@@ -39,6 +39,8 @@ export const createAgent = (deps: AgentDepsInput) => {
     following: () => following(s),
     followers: () => followers(s),
     checkUpdates: () => checkUpdates(s),
+    removeFollower: (address: string) => changeFollower(s, { address, unblock: false }),
+    unblockFollower: (address: string) => changeFollower(s, { address, unblock: true }),
     pollOnce: (waitSeconds = 0) => pollOnce(s, waitSeconds),
     isSignedIn: () => s.auth !== undefined,
     pending: () => s.buffer.length

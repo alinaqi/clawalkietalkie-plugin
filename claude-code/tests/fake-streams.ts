@@ -31,7 +31,8 @@ export const createFakeStreams = () => {
 
   const post = (body: Body): Reply => {
     const text = String(body?.text ?? '').trim()
-    if (text.length < 1 || text.length > 2000) return INVALID
+    if (text.length > 2000) return { status: 400, body: { error: 'text_too_long', max: 2000 } }
+    if (text.length < 1) return INVALID
     if (!isStreaming(nameOf(body?.from))) return { status: 409, body: { error: 'not_streaming' } }
     return { status: 201, body: { id: publish(addressOf(body?.from), text).id } }
   }
@@ -47,7 +48,7 @@ export const createFakeStreams = () => {
 
   const read = (after: string | null): Reply => {
     const match = after === null ? null : CURSOR.exec(after)
-    if (after !== null && !match) return { status: 400, body: { error: 'invalid_request' } }
+    if (after !== null && !match) return { status: 400, body: { error: 'invalid_cursor' } }
     const from = match ? Number(match[1]) : 0
     const page = log.filter((u) => u.seq > from && follows.has(u.from))
     const cursor = page.length > 0 ? `u${page.at(-1)!.seq}` : after ?? 'u0'

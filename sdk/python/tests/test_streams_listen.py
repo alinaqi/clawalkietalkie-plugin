@@ -1,3 +1,4 @@
+import pytest
 from conftest import until, until_async
 from fake_streams import publish
 
@@ -74,13 +75,14 @@ def test_stop_ends_both_loops(relay, client):
     assert len(feed_polls(relay)) == 1
 
 
-def test_a_refused_feed_cursor_reads_from_the_start_and_401_is_fatal(relay, client):
+@pytest.mark.parametrize("code", ["invalid_cursor", "invalid_request"])
+def test_a_refused_feed_cursor_reads_from_the_start_and_401_is_fatal(relay, client, code):
     _, fan = setup(relay, client)
     seen, infos = [], []
     stop = fan.listen(lambda m: None, on_update=lambda u: seen.append(u["id"]), **FAST)
     publish(relay, "pub", ["a"])
     until(lambda: seen == ["u1"])
-    relay.fail("^/v1/updates$", 400, body={"error": "invalid_request"}, method="GET")
+    relay.fail("^/v1/updates$", 400, body={"error": code}, method="GET")
     publish(relay, "pub", ["b"])
     until(lambda: "u2" in seen)
     stop()

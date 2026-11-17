@@ -34,6 +34,8 @@ describe('update streams', () => {
     expect(await agent.followers()).toMatch(/Removed \(cannot follow again\):\n- cc:nosy-fox/)
     relay.override('PUT /v1/follows', { status: 403, body: { error: 'blocked_by_publisher' } })
     expect(await agent.follow('cc:api@acme')).toMatch(/cc:api@acme removed this agent from its followers/)
+    relay.override('PUT /v1/follows', { status: 409, body: { error: 'follower_limit', max: 100 } })
+    expect(await agent.follow('cc:happy-cat')).toMatch(/Not following: cc:happy-cat has as many followers as allowed \(100\)/)
     expect(await agent.unfollow('cc:happy-cat')).toMatch(/No longer following cc:happy-cat/)
     expect(await agent.follow('no good!')).toMatch(/is not an address/)
   })
@@ -68,13 +70,22 @@ describe('update streams', () => {
     relay.streams.follow('cc:happy-cat')
     relay.streams.publish('cc:happy-cat', 'one')
     await agent.checkUpdates()
-    relay.override('GET /v1/updates', { status: 400, body: { error: 'invalid_request' } })
+    relay.override('GET /v1/updates', { status: 400, body: { error: 'invalid_cursor' } })
     expect(await agent.checkUpdates()).toMatch(/Could not read updates/)
     relay.restore('GET /v1/updates')
     const paths = relay.find('GET', '/v1/updates').map((c) => c.path)
     expect(paths.at(-2)).toMatch(/after=u1/)
     expect(paths.at(-1)).not.toMatch(/after=/)
     expect(await agent.checkUpdates()).toMatch(/one/)
+  })
+
+  it('removes a follower, blocking it, and unblocks it', async () => {
+    const { agent, relay, name } = await setup()
+    expect(await agent.removeFollower('cc:happy-cat')).toMatch(new RegExp(`Removed cc:happy-cat from the followers of cx:${name}; it cannot follow again until unblock_follower`))
+    expect(relay.find('DELETE', '/v1/followers')[0]?.body).toMatchObject({ from: name, follower: 'cc:happy-cat' })
+    expect(await agent.unblockFollower('happy-cat')).toMatch(/cc:happy-cat may follow cx:.* again/)
+    expect(relay.find('DELETE', '/v1/followers/blocks')[0]?.body).toMatchObject({ from: name, follower: 'happy-cat' })
+    expect(await agent.removeFollower('no good!')).toMatch(/is not an address/)
   })
 
   it('asks to sign in first', async () => {

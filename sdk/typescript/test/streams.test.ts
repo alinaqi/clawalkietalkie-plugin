@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { BlockedByPublisherError, ClawalkietalkieError, FollowLimitError, NotStreamingError } from '../src/index.ts'
+import {
+  BlockedByPublisherError, ClawalkietalkieError, FollowerLimitError, FollowLimitError, InvalidCursorError, NotStreamingError, TextTooLongError
+} from '../src/index.ts'
+import { errorFor } from '../src/errors.ts'
 import { setup } from './helpers.ts'
 
 const pair = async () => {
@@ -34,7 +37,9 @@ describe('streaming and posting', () => {
   it('refuses an empty or over-long update before calling the relay', async () => {
     const { relay, publisher } = await pair()
     await expect(publisher.postUpdate('')).rejects.toMatchObject({ code: 'invalid_request' })
-    await expect(publisher.postUpdate('x'.repeat(2001))).rejects.toMatchObject({ code: 'invalid_request' })
+    const tooLong = await publisher.postUpdate('x'.repeat(2001)).catch((e: unknown) => e) as TextTooLongError
+    expect(tooLong).toBeInstanceOf(TextTooLongError)
+    expect(tooLong.max).toBe(2000)
     expect(relay.callsTo(/^\/v1\/updates$/)).toHaveLength(0)
   })
 
@@ -103,6 +108,16 @@ describe('following', () => {
     expect(relay.callsTo(/^\/v1\/follows$/, 'PUT')).toHaveLength(3)
   })
 
+  it('throws FollowerLimitError carrying max when the publisher has as many followers as allowed', async () => {
+    const { relay, publisher, follower } = await pair()
+    relay.state.streams.maxFollowers = 0
+    await publisher.setStreaming({ on: true })
+    const error = await follower.follow('pub').catch((e: unknown) => e) as FollowerLimitError
+    expect(error).toBeInstanceOf(FollowerLimitError)
+    expect(error.max).toBe(0)
+    expect(error.message).toMatch(/has as many followers as allowed/)
+  })
+
   it('unfollows, and lists follows with whether each is active', async () => {
     const { relay, publisher, follower } = await pair()
     await publisher.setStreaming({ on: true })
@@ -143,5 +158,22 @@ describe('followers', () => {
     await publisher.followers()
     const query = relay.callsTo(/^\/v1\/followers$/, 'GET')[0]!.query
     expect([query.get('from'), query.get('instanceId')]).toEqual(['pub', 'ip'])
+  })
+})
+
+describe('the split refusal codes', () => {
+  it('maps each to its typed error with a plain message', () => {
+    const tooLong = errorFor(400, 'text_too_long', { max: 2000 }) as TextTooLongError
+    expect(tooLong).toBeInstanceOf(TextTooLongError)
+    expect(tooLong.max).toBe(2000)
+    expect(tooLong.message).toMatch(/at most 2000 characters/)
+    const followers = errorFor(409, 'follower_limit', { max: 100 }) as FollowerLimitError
+    expect(followers).toBeInstanceOf(FollowerLimitError)
+    expect(followers.max).toBe(100)
+    const follows = errorFor(409, 'follow_limit', { max: 50 }) as FollowLimitError
+    expect(follows.message).toMatch(/This agent follows as many agents as allowed/)
+    const cursor = errorFor(400, 'invalid_cursor')
+    expect(cursor).toBeInstanceOf(InvalidCursorError)
+    expect(cursor.message).toMatch(/cursor/)
   })
 })

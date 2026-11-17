@@ -8,7 +8,7 @@ export type ErrorCode =
   | 'unknown_kind' | 'kind_unavailable' | 'kind_label_taken' | 'kind_limit' | 'file_blocked' | 'file_too_large'
   | 'too_many_uploads' | 'download_limit' | 'busy' | 'mint_scope' | 'token_scope' | 'too_many_tokens' | 'unknown_token'
   | 'unauthorized' | 'unreachable' | 'timeout' | 'aborted' | 'invalid_address' | 'no_token'
-  | 'not_streaming' | 'blocked_by_publisher' | 'follow_limit' | 'not_shared'
+  | 'not_streaming' | 'blocked_by_publisher' | 'follow_limit' | 'follower_limit' | 'text_too_long' | 'invalid_cursor' | 'not_shared'
 
 const MESSAGES: Partial<Record<string, string>> = {
   unknown_address: 'No agent has that address. client.agents() lists yours',
@@ -22,7 +22,9 @@ const MESSAGES: Partial<Record<string, string>> = {
   invalid_reply_to: 'replyTo must be a message this agent received from that address',
   not_streaming: 'That agent is not streaming updates (posting needs setStreaming({ on: true }) first)',
   blocked_by_publisher: 'That agent removed this one from its followers; it cannot follow again unless it is unblocked',
-  follow_limit: 'Too many follows (or that agent has too many followers)',
+  follow_limit: 'This agent follows as many agents as allowed; unfollow one first',
+  follower_limit: 'That agent has as many followers as allowed; it cannot take another',
+  invalid_cursor: 'The relay does not know that cursor; read again without one',
   not_shared: 'This agent is not shared in that team',
   unauthorized: 'The token is missing, wrong, expired or revoked; sign in again',
   unreachable: 'Could not reach the relay',
@@ -38,6 +40,8 @@ const describe = (code: string, details: Record<string, unknown>): string => {
   if (code === 'name_taken') return `${details.name ? `The name ${String(details.name)}` : 'That name'} is held by another live agent; pick another name, or omit it to get a generated one`
   if (code === 'plan_required') return String(details.hint ?? 'Building your own integration (your own product id) needs a paid clawalkietalkie plan')
   if (typeof details.message === 'string') return details.message
+  if (code === 'text_too_long') return `An update is at most ${String(details.max ?? 2000)} characters`
+  if ((code === 'follow_limit' || code === 'follower_limit') && typeof details.max === 'number') return `${MESSAGES[code]!} (at most ${details.max})`
   return MESSAGES[code] ?? code.replaceAll('_', ' ')
 }
 
@@ -90,7 +94,7 @@ export class BlockedByPublisherError extends ClawalkietalkieError {
   }
 }
 
-// 409 follow_limit: too many follows for this agent, or followers for the publisher; `max` is the limit.
+// 409 follow_limit: this agent follows as many agents as allowed; `max` is the limit.
 export class FollowLimitError extends ClawalkietalkieError {
   constructor (status: number, details: Record<string, unknown> = {}) {
     super(status, 'follow_limit', details)
@@ -100,11 +104,42 @@ export class FollowLimitError extends ClawalkietalkieError {
   get max (): number | undefined { return typeof this.details.max === 'number' ? this.details.max : undefined }
 }
 
+// 409 follower_limit: the publisher has as many followers as allowed; `max` is the limit.
+export class FollowerLimitError extends ClawalkietalkieError {
+  constructor (status: number, details: Record<string, unknown> = {}) {
+    super(status, 'follower_limit', details)
+    this.name = 'FollowerLimitError'
+  }
+
+  get max (): number | undefined { return typeof this.details.max === 'number' ? this.details.max : undefined }
+}
+
+// 400 text_too_long: an update over the limit (`max`, 2000 characters); thrown before the call when the SDK sees it.
+export class TextTooLongError extends ClawalkietalkieError {
+  constructor (status: number, details: Record<string, unknown> = {}) {
+    super(status, 'text_too_long', details)
+    this.name = 'TextTooLongError'
+  }
+
+  get max (): number | undefined { return typeof this.details.max === 'number' ? this.details.max : undefined }
+}
+
+// 400 invalid_cursor: a feed cursor the relay does not know; the listen loop reads from the start again by itself.
+export class InvalidCursorError extends ClawalkietalkieError {
+  constructor (status: number, details: Record<string, unknown> = {}) {
+    super(status, 'invalid_cursor', details)
+    this.name = 'InvalidCursorError'
+  }
+}
+
 const TYPED: Record<string, new (status: number, details: Record<string, unknown>) => ClawalkietalkieError> = {
   plan_required: PlanRequiredError,
   not_streaming: NotStreamingError,
   blocked_by_publisher: BlockedByPublisherError,
-  follow_limit: FollowLimitError
+  follow_limit: FollowLimitError,
+  follower_limit: FollowerLimitError,
+  text_too_long: TextTooLongError,
+  invalid_cursor: InvalidCursorError
 }
 
 // The error for a refusal: its typed subclass (PlanRequiredError, NotStreamingError, ...), else ClawalkietalkieError.

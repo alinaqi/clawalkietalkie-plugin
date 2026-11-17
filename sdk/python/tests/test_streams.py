@@ -1,7 +1,15 @@
 import pytest
 from fake_streams import publish
 
-from clawalkietalkie import BlockedByPublisher, ClawalkietalkieError, FollowLimit, NotStreaming
+from clawalkietalkie import (
+    BlockedByPublisher,
+    ClawalkietalkieError,
+    FollowerLimit,
+    FollowLimit,
+    InvalidCursor,
+    NotStreaming,
+    TextTooLong,
+)
 
 
 def pair(relay, client):
@@ -33,9 +41,11 @@ def test_post_update_needs_streaming_on(relay, client):
 
 def test_post_update_checks_the_length_before_sending(relay, client):
     pub, _ = pair(relay, client)
-    for text in ("", "x" * 2001):
-        with pytest.raises(ClawalkietalkieError, match="invalid_request"):
-            pub.post_update(text)
+    with pytest.raises(ClawalkietalkieError, match="invalid_request"):
+        pub.post_update("")
+    with pytest.raises(TextTooLong) as too_long:
+        pub.post_update("x" * 2001)
+    assert too_long.value.max == 2000
     assert relay.calls_to("^/v1/updates$") == []
 
 
@@ -99,6 +109,11 @@ def test_follow_refusals_are_typed(relay, client):
     with pytest.raises(FollowLimit) as limit:
         fan.follow("pub")
     assert limit.value.max == 0 and isinstance(limit.value, ClawalkietalkieError)
+    relay.keys["streams"]["max"] = 50
+    relay.keys["streams"]["max_followers"] = 0
+    with pytest.raises(FollowerLimit) as full:
+        fan.follow("pub")
+    assert full.value.max == 0 and "as many followers as allowed" in str(full.value)
     with pytest.raises(ClawalkietalkieError, match="invalid_address"):
         fan.follow("not an address!")
 
@@ -109,6 +124,12 @@ def test_typed_errors_describe_themselves():
     assert "removed this agent" in str(error_for(403, "blocked_by_publisher"))
     assert "at most 50" in str(error_for(409, "follow_limit", {"max": 50}))
     assert "set_streaming" in str(error_for(409, "not_streaming"))
+    assert "This agent follows as many agents as allowed" in str(error_for(409, "follow_limit", {"max": 50}))
+    followers = error_for(409, "follower_limit", {"max": 100})
+    assert isinstance(followers, FollowerLimit) and followers.max == 100 and "at most 100" in str(followers)
+    too_long = error_for(400, "text_too_long", {"max": 2000})
+    assert isinstance(too_long, TextTooLong) and too_long.max == 2000 and "at most 2000 characters" in str(too_long)
+    assert isinstance(error_for(400, "invalid_cursor"), InvalidCursor)
 
 
 async def test_the_async_agent_streams_follows_and_reads(relay, async_client):

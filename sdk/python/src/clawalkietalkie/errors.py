@@ -20,6 +20,9 @@ _MESSAGES = {
     "timeout": "The relay did not answer in time",
     "not_streaming": "Streaming is off: the publisher has not turned it on, or this agent has not "
     "(turn it on with set_streaming(True) before post_update)",
+    "follow_limit": "This agent follows as many agents as allowed; unfollow one first",
+    "follower_limit": "That agent has as many followers as allowed; it cannot take another",
+    "invalid_cursor": "The relay does not know that cursor; read again without one",
     "blocked_by_publisher": "That agent removed this agent as a follower; it cannot follow again unless it unblocks it",
     "not_shared": "This agent is not shared in that team",
     "no_token": "No token: pass token= or token_file=, set CLAWALKIETALKIE_TOKEN, "
@@ -35,8 +38,10 @@ def _describe(code: str, details: Mapping[str, Any]) -> str:
     if code == "name_taken":
         who = f"The name {details['name']}" if details.get("name") else "That name"
         return f"{who} is held by another live agent; pick another name, or omit it to get a generated one"
-    if code == "follow_limit":
-        return f"Too many follows: at most {details.get('max', 'the limit')}; unfollow one first"
+    if code in ("follow_limit", "follower_limit") and isinstance(details.get("max"), int):
+        return f"{_MESSAGES[code]} (at most {details['max']})"
+    if code == "text_too_long":
+        return f"An update is at most {details.get('max', 2000)} characters"
     if code == "not_streaming" and isinstance(details.get("hint"), str):
         return f"{_MESSAGES[code]}. {details['hint']}"
     if code == "plan_required":
@@ -109,7 +114,7 @@ class BlockedByPublisher(ClawalkietalkieError):
 
 
 class FollowLimit(ClawalkietalkieError):
-    """409 follow_limit: this agent follows, or the publisher has, as many as allowed (`max`)."""
+    """409 follow_limit: this agent follows as many agents as allowed (`max`)."""
 
     def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(status, "follow_limit", details)
@@ -120,11 +125,45 @@ class FollowLimit(ClawalkietalkieError):
         return value if isinstance(value, int) else None
 
 
+class FollowerLimit(ClawalkietalkieError):
+    """409 follower_limit: the publisher has as many followers as allowed (`max`)."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "follower_limit", details)
+
+    @property
+    def max(self) -> Optional[int]:
+        value = self.details.get("max")
+        return value if isinstance(value, int) else None
+
+
+class TextTooLong(ClawalkietalkieError):
+    """400 text_too_long: an update over `max` (2000) characters; raised before the call when the SDK sees it."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "text_too_long", details)
+
+    @property
+    def max(self) -> Optional[int]:
+        value = self.details.get("max")
+        return value if isinstance(value, int) else None
+
+
+class InvalidCursor(ClawalkietalkieError):
+    """400 invalid_cursor: a feed cursor the relay does not know; listen reads from the start again by itself."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "invalid_cursor", details)
+
+
 _TYPED = {
     "plan_required": PlanRequired,
     "not_streaming": NotStreaming,
     "blocked_by_publisher": BlockedByPublisher,
     "follow_limit": FollowLimit,
+    "follower_limit": FollowerLimit,
+    "text_too_long": TextTooLong,
+    "invalid_cursor": InvalidCursor,
 }
 
 

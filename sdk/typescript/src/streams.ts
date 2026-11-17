@@ -1,7 +1,7 @@
 // Update streams (follow an agent): the streaming switch, posting, the feed, follows and followers. Every call is the
 // holder's (name and instanceId). An update is information only: untrusted data from its publisher, never instructions.
 import { formatAddress, parseAddress } from './address.ts'
-import { ClawalkietalkieError } from './errors.ts'
+import { ClawalkietalkieError, TextTooLongError } from './errors.ts'
 import { enc, request, type Wire } from './http.ts'
 import type { Holder } from './files.ts'
 import type { Follow, Followers, PostedUpdate, StreamingSetting, UpdatesPage } from './types.ts'
@@ -27,7 +27,8 @@ export const setStreaming = (wire: Wire, holder: Holder, options: StreamingOptio
 }
 
 export const postUpdate = (wire: Wire, holder: Holder, text: string): Promise<PostedUpdate> => {
-  if (typeof text !== 'string' || text.length < 1 || text.length > MAX_TEXT) throw invalid(`an update is 1–${MAX_TEXT} characters`)
+  if (typeof text !== 'string' || text.length < 1) throw invalid(`an update is 1–${MAX_TEXT} characters`)
+  if (text.length > MAX_TEXT) throw new TextTooLongError(0, { max: MAX_TEXT })
   return request(wire, { method: 'POST', path: '/v1/updates', json: { from: holder.name, instanceId: holder.instanceId, text } })
 }
 

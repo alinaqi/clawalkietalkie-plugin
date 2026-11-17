@@ -13,7 +13,8 @@ def err(status: int, error: str, **extra: Any) -> httpx.Response:
 
 
 def state(relay) -> Dict[str, Any]:
-    return relay.keys.setdefault("streams", {"on": {}, "log": [], "follows": {}, "blocked": set(), "seq": 0, "max": 50})
+    fresh = {"on": {}, "log": [], "follows": {}, "blocked": set(), "seq": 0, "max": 50, "max_followers": 100}
+    return relay.keys.setdefault("streams", fresh)
 
 
 def address(relay, name: str) -> str:
@@ -50,7 +51,9 @@ def is_on(relay, name: str) -> bool:
 def post(relay, name: str, text: str) -> httpx.Response:
     if not is_on(relay, name):
         return err(409, "not_streaming")
-    if not 1 <= len(text) <= 2000:
+    if len(text) > 2000:
+        return err(400, "text_too_long", max=2000)
+    if not text:
         return err(400, "invalid_request")
     s = state(relay)
     s["seq"] += 1
@@ -70,7 +73,7 @@ def page(relay, name: str, after: Optional[str]) -> httpx.Response:
 def feed(relay, call, name: str) -> Any:
     after = call.query.get("after")
     if after is not None and not re.match(r"^u\d+$", after):
-        return err(400, "invalid_request")
+        return err(400, "invalid_cursor")
     wait = int(call.query.get("wait") or 0)
     if wait == 0:
         return page(relay, name, after)
@@ -91,6 +94,9 @@ def follow(relay, name: str, to: str) -> httpx.Response:
     follows = s["follows"].setdefault(name, {})
     if target not in follows and len(follows) >= s["max"]:
         return err(409, "follow_limit", max=s["max"])
+    followers = sum(1 for f in s["follows"].values() if target in f)
+    if target not in follows and followers >= s["max_followers"]:
+        return err(409, "follower_limit", max=s["max_followers"])
     follows.setdefault(target, 1000)
     return httpx.Response(200, json={"to": address(relay, target)})
 

@@ -15,8 +15,10 @@ from clawalkietalkie import (
     BlockedByPublisher,
     ClawalkietalkieError,
     Client,
+    InvalidCursor,
     NotStreaming,
     PlanRequired,
+    TextTooLong,
     async_sign_in,
     sign_in,
 )
@@ -168,8 +170,14 @@ def test_sync_remove_and_unblock_a_follower_end_to_end():
         pytest.skip("this relay does not block removed followers yet")
     with pytest.raises(BlockedByPublisher):
         fan.follow(pub.address)
+    assert [b["address"] for b in pub.followers()["blocked"]] == [fan.address]
     pub.unblock_follower(fan.address)
+    assert pub.followers()["blocked"] == []
     assert fan.follow(pub.address) == pub.address
+    with pytest.raises(InvalidCursor):
+        fan.updates(after="not-a-cursor")
+    with pytest.raises(TextTooLong):
+        pub.post_update("x" * 2001)
     client.close()
 
 

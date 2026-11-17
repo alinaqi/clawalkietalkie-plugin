@@ -9,9 +9,10 @@ export interface StreamState {
   follows: Map<string, Map<string, number>>
   blocked: Map<string, Map<string, number>>
   ids: number
+  maxFollowers: number
 }
 
-export const createStreamState = (): StreamState => ({ streaming: new Map(), log: [], follows: new Map(), blocked: new Map(), ids: 0 })
+export const createStreamState = (): StreamState => ({ streaming: new Map(), log: [], follows: new Map(), blocked: new Map(), ids: 0, maxFollowers: 100 })
 
 const err = (status: number, error: string, extra: Record<string, unknown> = {}): Answer => ({ status, body: { error, ...extra } })
 const nameOf = (to: string): string => to.split('@')[0]!.replace(/^[a-z][a-z0-9]{1,7}:/, '')
@@ -34,7 +35,7 @@ const setStreaming = (s: FakeState, call: Call, name: string): Answer => {
 
 const post = (s: FakeState, call: Call): Answer => {
   const { from, text } = call.body as { from: string, text: string }
-  if (typeof text !== 'string' || text.length < 1 || text.length > 2000) return err(400, 'invalid_request')
+  if (typeof text !== 'string' || text.length < 1 || text.length > 2000) return err(400, 'text_too_long', { max: 2000 })
   if (!isOn(s, from)) return err(409, 'not_streaming')
   const id = ++s.streams.ids
   s.streams.log.push({ id, publisher: from, kind: 'post', text, at: Date.now() })
@@ -52,7 +53,7 @@ const pageOf = (s: FakeState, from: string, after: number) => {
 const feed = async (s: FakeState, call: Call, signal?: AbortSignal): Promise<Answer> => {
   const { from, after: raw } = Object.fromEntries(call.query)
   const after = raw === undefined ? 0 : /^u\d+$/.test(raw) ? Number(raw.slice(1)) : null
-  if (after === null) return err(400, 'invalid_request')
+  if (after === null) return err(400, 'invalid_cursor')
   const wait = Number(call.query.get('wait') ?? 0)
   if (pageOf(s, from!, after).updates.length === 0 && wait > 0) await waitFor(s, wait * s.waitScaleMs, signal)
   return { status: 200, body: pageOf(s, from!, after) }
@@ -74,6 +75,8 @@ const follow = (s: FakeState, call: Call): Answer => {
   if (!isOn(s, name)) return err(409, 'not_streaming', { hint: `${addressOf(s, name)} is not streaming` })
   const mine = s.streams.follows.get(from) ?? new Map<string, number>()
   if (!mine.has(name) && mine.size >= 2) return err(409, 'follow_limit', { max: 2 })
+  const followers = [...s.streams.follows.values()].filter((m) => m.has(name)).length
+  if (!mine.has(name) && followers >= s.streams.maxFollowers) return err(409, 'follower_limit', { max: s.streams.maxFollowers })
   mine.set(name, mine.get(name) ?? Date.now())
   s.streams.follows.set(from, mine)
   return { status: 200, body: { to: addressOf(s, name) } }

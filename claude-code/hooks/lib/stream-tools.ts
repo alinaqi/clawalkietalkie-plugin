@@ -4,6 +4,7 @@ import type { ToolSpec } from 'claude-code'
 
 const ADDRESS = { type: 'string', description: 'The address, like cc:happy-dog (the user\'s own agent) or cx:review@acme (a teammate\'s)' }
 const NONE = { type: 'object', properties: {} }
+const FOLLOWER = { type: 'object', properties: { address: { type: 'string', description: 'The follower\'s address, as followers lists it' } }, required: ['address'] }
 
 const spec = (name: string, description: string, inputSchema: ToolSpec['inputSchema']): ToolSpec =>
   ({ name, description, inputSchema, isDeferred: false })
@@ -28,5 +29,7 @@ export const STREAM_TOOLS: readonly ToolSpec[] = [
   }),
   spec('unfollow', 'Stop following an agent.', { type: 'object', properties: { to: ADDRESS }, required: ['to'] }),
   spec('following', 'List the agents this session follows; a paused one is not streaming now or out of reach.', NONE),
-  spec('followers', 'List the agents following this session, and those removed from its followers.', NONE)
+  spec('followers', 'List the agents following this session, and those removed from its followers.', NONE),
+  spec('remove_follower', 'Remove an agent from this session\'s followers, only when the user wants it; it cannot follow again until unblocked.', FOLLOWER),
+  spec('unblock_follower', 'Let an agent removed from this session\'s followers follow it again.', FOLLOWER)
 ]

@@ -7,7 +7,7 @@ const call = async ($: Engine, name: string, args: Record<string, unknown> = {})
 test('registers the update-stream tools beside the messaging ones', async ($, on) => {
   const { seen } = setup(on)
   await start($)
-  expect(seen.tools).toEqual(expect.arrayContaining(['stream_updates', 'post_update', 'follow', 'unfollow', 'following', 'followers']))
+  expect(seen.tools).toEqual(expect.arrayContaining(['stream_updates', 'post_update', 'follow', 'unfollow', 'following', 'followers', 'remove_follower', 'unblock_follower']))
 })
 
 test('stream_updates turns streaming on (with status changes) and off', async ($, on) => {
@@ -36,6 +36,8 @@ test('post_update checks the length first and explains the hourly limit', async 
   expect(relay.find('POST', '/v1/updates')).toHaveLength(0)
   relay.override('POST /v1/updates', { status: 429, body: { error: 'rate_limited' } })
   expect(await call($, 'post_update', { text: 'again' })).toMatch(/Not posted: at most 60 updates an hour/)
+  relay.override('POST /v1/updates', { status: 400, body: { error: 'text_too_long', max: 1500 } })
+  expect(await call($, 'post_update', { text: 'again' })).toMatch(/Not posted: an update is at most 1500 characters/)
 })
 
 test('follow follows an agent that streams, and unfollow stops', async ($, on) => {
@@ -56,7 +58,8 @@ const REFUSALS: Array<[number, Record<string, unknown>, RegExp]> = [
   [403, { error: 'blocked_by_publisher' }, /cc:api@acme removed this session from its followers/],
   [403, { error: 'not_allowed_for_assistant', message: 'Outside reach.' }, /Outside reach\./],
   [409, { error: 'not_streaming', hint: 'x' }, /cc:api@acme is not streaming updates/],
-  [409, { error: 'follow_limit', max: 50 }, /at most 50/],
+  [409, { error: 'follow_limit', max: 50 }, /this session follows as many agents as allowed \(50\); unfollow one first/],
+  [409, { error: 'follower_limit', max: 100 }, /cc:api@acme has as many followers as allowed \(100\)/],
   [429, { error: 'rate_limited' }, /too many follow changes in the last hour/],
   [500, { error: 'internal' }, /the relay answered 500 internal/]
 ]
@@ -89,6 +92,15 @@ test('followers lists the followers and those removed', async ($, on) => {
   const text = await call($, 'followers')
   expect(text).toMatch(/Followers of cc:happy-dog:\n- cc:happy-cat/)
   expect(text).toMatch(/Removed \(cannot follow again\):\n- cc:nosy-fox/)
+})
+
+test('remove_follower removes and blocks a follower, and unblock_follower lifts that', async ($, on) => {
+  const { relay } = setup(on, SIGNED_IN)
+  await start($)
+  expect(await call($, 'remove_follower', { address: 'cc:happy-cat' })).toMatch(/Removed cc:happy-cat from the followers of cc:happy-dog; it cannot follow again until unblock_follower/)
+  expect(relay.find('DELETE', '/v1/followers')[0]?.body).toEqual({ from: 'happy-dog', instanceId: 'inst-dog', follower: 'cc:happy-cat' })
+  expect(await call($, 'unblock_follower', { address: 'cc:happy-cat' })).toMatch(/cc:happy-cat may follow cc:happy-dog again/)
+  expect(relay.find('DELETE', '/v1/followers/blocks')[0]?.body).toEqual({ from: 'happy-dog', instanceId: 'inst-dog', follower: 'cc:happy-cat' })
 })
 
 test('the stream tools ask to sign in first', async ($, on) => {
