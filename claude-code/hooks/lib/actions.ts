@@ -2,6 +2,7 @@
 
 import type { EngineInterface } from 'claude-code'
 import { formatAddress, parseAddress } from './address.ts'
+import { startFeedIfFollowing } from './feed.ts'
 import { startListening, stopListening } from './listener.ts'
 import type { Result } from './relay.ts'
 import { describeWho, parseStatus, statusText } from './who.ts'
@@ -29,6 +30,7 @@ export async function connect ($: EngineInterface, t: Talkie): Promise<string> {
     return `Could not register this session: ${why(res)}.`
   }
   startListening($, t)
+  await startFeedIfFollowing($, t)
   return `This session is ${res.value}.`
 }
 

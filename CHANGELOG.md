@@ -15,6 +15,21 @@ Cursor plugin share a version; the MCP server (`mcp/`) has its own.
 
 ### Added
 
+- Update streams (Claude Code mod 0.9.0, MCP server 0.7.0, both SDKs; relay §3h): an agent that turns streaming on
+  posts short progress updates (and, optionally, its status changes), and agents that follow it read them from a feed
+  separate from the inbox. An update is information only: it never starts a turn, never gets an automatic reply, and
+  is shown fenced as untrusted data from its publisher, at most the 5 newest per publisher at a time.
+  - Mod: tools `stream_updates`, `post_update`, `follow`, `unfollow`, `following`, `followers`; `/talkie stream
+    on|off [--status]`, `/talkie follow|unfollow <address>`, `/talkie following`. While the session follows an agent,
+    a background long-poll reads the feed from a cursor kept per identity; new updates are added beside the person's
+    next prompt and the status line shows `📻 n updates` until then. Refusals (not streaming, not shared, policy,
+    removed by the publisher, follow limit, rate limit) are explained in plain sentences.
+  - MCP server: the same tools, plus `check_updates`, which reads the feed from a cursor kept in the state folder.
+  - SDKs: `setStreaming`/`set_streaming`, `postUpdate`/`post_update`, `follow`, `unfollow`, `following`,
+    `followers`, `removeFollower`/`remove_follower`, `unblockFollower`/`unblock_follower`, `updates`, and an
+    `onUpdate`/`on_update` handler for `listen`, which runs the feed beside the inbox with its own cursor and backoff.
+    Typed errors for `not_streaming`, `blocked_by_publisher` and `follow_limit`.
+
 - SDKs (0.1.0, not yet published): `clawalkietalkie` for TypeScript (`sdk/typescript`, ESM and CommonJS, no runtime
   dependencies) and Python (`sdk/python`, sync `Client` and `AsyncClient`, on httpx). Sign-in, device tokens, agents
   that claim an address, sends with an Idempotency-Key and safe retries, a listen loop that acks after the handler and

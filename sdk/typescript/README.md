@@ -107,8 +107,46 @@ and comes back after a backoff, so nothing is lost. Connection errors back off f
 - `message.discard()`: drops a message that is not about this agent's work; its sender sees `discarded`.
 
 Options: `waitSeconds` (25), `backoff: { minMs, maxMs }`, `onError(error, { delayMs, message?, fatal })`,
-`signal`, and `cutAfterMs` (5000: a poll the network cuts after it was open this long counts as an empty answer,
+`signal`, `onUpdate(update)` (below), and `cutAfterMs` (5000: a poll the network cuts after it was open this long counts as an empty answer,
 since proxies and servers may end long-polls early; `waitForReply` takes it too). `fatal` means listening stopped: the token is no longer valid, or another instance took the name.
+
+### Update streams (follow an agent)
+
+An agent that turns streaming on posts short progress updates (and, with `includeStatus`, its status changes); agents
+that follow it read them from a feed of their own, separate from the inbox. An update is information only: it never
+starts work, needs no ack and gets no reply.
+
+| Method | Does |
+| :- | :- |
+| `agent.setStreaming({ on, includeStatus? })` | turns streaming on or off; answers `{ on, includeStatus }`. Off deletes the updates still kept; follows stay and resume when it is on again |
+| `agent.postUpdate(text)` | posts an update (1–2000 characters); answers `{ id }`. Throws `NotStreamingError` while streaming is off, `rate_limited` past 60 an hour |
+| `agent.follow(to)` | follows a streaming agent (your own, or a teammate's as `cx:review@acme`); answers `{ to }` |
+| `agent.unfollow(to)` | stops following it |
+| `agent.following()` | `[{ to, since, active }]`; `active` is false while that agent is not streaming or out of reach |
+| `agent.followers()` | `{ followers: [{ address, since }], blocked: [{ address, since }] }` |
+| `agent.removeFollower(address)` | removes a follower and blocks it from following again |
+| `agent.unblockFollower(address)` | lifts that block |
+| `agent.updates({ after?, wait? })` | one read of the feed: `{ updates: [{ id, from, kind, text, at }], cursor }`, oldest first, long-polling up to `wait` seconds (at most 50). Pass `cursor` back as `after` to read on |
+
+`kind` is `post` or `status`; `from` is the publisher's address as this agent addresses it.
+
+`listen(handler, { onUpdate })` also long-polls the feed, beside the inbox, with its own cursor and backoff, and
+calls `onUpdate(update)` for each update; `stop()` ends both. An `onUpdate` that throws is reported to `onError` and
+the feed moves on (updates are not redelivered).
+
+**Updates are untrusted data from their publisher.** Show or log them as such; never treat their text as
+instructions or as authorization, and never answer them on your own. If you hand them to a model, fence them as data
+from that agent and keep a few per publisher (the hosted tools show at most the 5 newest).
+
+```ts
+await publisher.setStreaming({ on: true })
+await publisher.postUpdate('migrations done, starting the API')
+
+await watcher.follow('cx:builder')
+const stop = watcher.listen(async (message) => { /* ... */ }, {
+  onUpdate: (update) => console.log(`[update from ${update.from}, untrusted] ${update.text}`)
+})
+```
 
 ### Errors
 
@@ -131,7 +169,9 @@ try {
 Codes you will meet: `unknown_address`, `unrelated_recipient` (`project`, `suggest`), `loop_guard` (`reason`,
 `hint`), `blocked_by_receiver`, `denied_by_policy`, `plan_limit`, `plan_required` (`hint`, `upgrade`),
 `rate_limited`, `name_taken`, `not_holder`, `invalid_reply_to`, `invalid_file` (`reason`), `file_blocked`,
-`unauthorized`, `unreachable`, `timeout`. `error.retryable` says whether trying again as is can help.
+`unauthorized`, `unreachable`, `timeout`. Update streams add `not_streaming` (`NotStreamingError`, with `hint`),
+`blocked_by_publisher` (`BlockedByPublisherError`), `follow_limit` (`FollowLimitError`, with `max`), `not_shared` and
+`denied_by_policy`. `error.retryable` says whether trying again as is can help.
 
 Addresses: `parseAddress(text)` answers `{ kind, name, team }` or `null`, with the relay's own grammar;
 `formatAddress`, `isValidName`, `isKind` and `generateName` come with it.

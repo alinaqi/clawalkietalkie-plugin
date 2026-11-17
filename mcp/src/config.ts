@@ -51,3 +51,12 @@ export const saveCursor = (dir: string, key: string, cursor: string | undefined)
   const { [key]: _old, ...rest } = readJson<Record<string, string>>(join(dir, 'cursors.json')) ?? {}
   writePrivate(dir, 'cursors.json', cursor ? { ...rest, [key]: cursor } : rest)
 }
+
+// The update-feed cursor of each identity, kept once check_updates has shown everything before it.
+export const loadUpdatesCursor = (dir: string, key: string): string | undefined =>
+  readJson<Record<string, string>>(join(dir, 'update-cursors.json'))?.[key]
+
+export const saveUpdatesCursor = (dir: string, key: string, cursor: string | undefined): void => {
+  const { [key]: _old, ...rest } = readJson<Record<string, string>>(join(dir, 'update-cursors.json')) ?? {}
+  writePrivate(dir, 'update-cursors.json', cursor ? { ...rest, [key]: cursor } : rest)
+}

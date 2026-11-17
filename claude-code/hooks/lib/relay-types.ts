@@ -4,7 +4,7 @@ export type AgentState = 'working' | 'blocked' | 'idle' | 'done'
 export interface StatusBody { state: AgentState, task: string, blockedOn?: string, waitingFor?: string }
 export interface AgentStatus extends StatusBody { at: number }
 export interface SessionInfo {
-  address: string, online: boolean, lastSeen: number, host: string | null, cwd: string | null, status?: AgentStatus | null, closed?: boolean
+  address: string, online: boolean, lastSeen: number, host: string | null, cwd: string | null, status?: AgentStatus | null, closed?: boolean, streaming?: boolean
 }
 export type MessageType = 'note' | 'request'
 // fromPerson is the teammate's email (key:<name> for CI), null for the person's own agents. delivery 'prompt'
@@ -35,3 +35,15 @@ export interface Sent {
 export interface ClaimBody { instanceId: string, kind?: string, client?: string, host?: string, cwd?: string }
 // replyTo: the id of a message this agent received, answered here; the relay checks it is addressed to that sender.
 export interface SendBody { from: string, instanceId: string, to: string, text: string, hop?: number, type?: MessageType, replyTo?: string, about?: string, files?: string[] }
+// Update streams: an agent's short progress posts (kind post) and, when it publishes them, its status changes.
+export type UpdateKind = 'post' | 'status'
+export interface Update { id: number, from: string, kind: UpdateKind, text: string, at: number }
+// One read of the feed: the updates after `after`, and the cursor to read on from (always set).
+export interface UpdatesPage { updates: Update[], cursor: string }
+export interface UpdatesQuery { instanceId: string, wait: number, after?: string }
+export interface Streaming { on: boolean, includeStatus: boolean }
+// active: false while the publisher is not streaming or out of reach; the follow resumes by itself.
+export interface Follow { to: string, since: number, active: boolean }
+export interface Follower { address: string, since: number }
+// blocked: followers this agent removed, who cannot follow it again until it unblocks them.
+export interface Followers { followers: Follower[], blocked: Follower[] }

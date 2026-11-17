@@ -4,9 +4,11 @@ import type { EngineInterface, Register } from 'claude-code'
 import { connect } from './actions.ts'
 import { runTalkie } from './commands.ts'
 import { folderName } from './frame.ts'
+import { takeUpdates } from './feed.ts'
 import { readMessage } from './hops.ts'
 import { stopListening } from './listener.ts'
 import { loadTalkie, relayOf, showStatus, type Options, type Talkie } from './talkie.ts'
+import { STREAM_TOOLS } from './stream-tools.ts'
 import { DISCARD_TOOL, SEND_TOOL, SET_STATUS_TOOL, WHO_TOOL } from './tools.ts'
 
 export type On = Parameters<Register>[0]
@@ -23,12 +25,13 @@ async function boot ($: EngineInterface, options: Options, cwd: string): Promise
   await $.command.register({
     name: 'talkie',
     description: 'Message your other coding agents (cc:, cx:, …) and your teammates\' agents by address',
-    argumentHint: '[login|verify|who|send|ask|name|inbox|teams|join|share|unshare|approvals|approve|deny|autoapprove|on|off|status|logout]'
+    argumentHint: '[login|verify|who|send|ask|name|inbox|teams|join|share|unshare|approvals|approve|deny|autoapprove|stream|follow|unfollow|following|on|off|status|logout]'
   })
   await $.tool.register(SEND_TOOL)
   await $.tool.register(WHO_TOOL)
   await $.tool.register(SET_STATUS_TOOL)
   await $.tool.register(DISCARD_TOOL)
+  for (const tool of STREAM_TOOLS) await $.tool.register(tool)
   const talkie = await loadTalkie($, options, { cwd: folderName(cwd), root: cwd })
   if (talkie.auth) await connect($, talkie)
   else showStatus($, talkie)
@@ -56,11 +59,12 @@ export function onSession (on: On, box: Box): void {
   })
 }
 
-// A prompt the person (not this plugin) submits carries the context-only messages that arrived since.
+// A prompt the person (not this plugin) submits carries the context-only messages that arrived since, and the
+// updates read from the agents this session follows, fenced as data.
 export function onPrompt (on: On, box: Box): void {
   on('prompt.submit', ($, e, next) => {
     if (!box.talkie || e.origin.kind === 'plugin') return next(e)
-    const context = e.command ? [] : takeContext(box.talkie)
+    const context = e.command ? [] : [...takeContext(box.talkie), ...takeUpdates($, box.talkie)]
     return next(context.length > 0 ? { ...e, context: [...(e.context ?? []), ...context] } : e)
   }).catch(($, e, next) => next(e))
   on('command.run', { command: 'talkie' }, async ($, e) =>

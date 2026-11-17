@@ -2,7 +2,8 @@
 // CLAWALKIETALKIE_E2E_LOG=<the relay's log file>, where the development relay writes sign-in codes.
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { createClient, isClawalkietalkieError, PlanRequiredError, signIn, type Client } from '../src/index.ts'
+import { createClient, isClawalkietalkieError, NotStreamingError, PlanRequiredError, signIn, type Client, type Update } from '../src/index.ts'
+import { until } from './helpers.ts'
 
 const server = process.env.CLAWALKIETALKIE_E2E_SERVER ?? ''
 const log = process.env.CLAWALKIETALKIE_E2E_LOG ?? ''
@@ -67,5 +68,34 @@ describe.skipIf(!isLocal || !log)('end to end against a local relay', () => {
     await client.revokeDeviceToken(minted.id)
     await stop()
     await Promise.all([echo.close(), sender.close()])
+  }, 60_000)
+
+  // A built-in product id, so a Free account may claim it.
+  it('streams updates: one agent posts, another follows and reads them by hand and through listen', async () => {
+    const client = await signedIn()
+    const publisher = client.agent({ client: 'codex', cwd: 'sdk' })
+    const follower = client.agent({ client: 'codex', cwd: 'sdk' })
+    await Promise.all([publisher.claim(), follower.claim()])
+    expect(await follower.follow(publisher.address!).catch((e: unknown) => e)).toBeInstanceOf(NotStreamingError)
+    expect(await publisher.setStreaming({ on: true, includeStatus: true })).toEqual({ on: true, includeStatus: true })
+    expect((await follower.follow(publisher.address!)).to).toBe(publisher.address)
+    expect(await follower.following()).toEqual([expect.objectContaining({ to: publisher.address, active: true })])
+    expect((await publisher.followers()).followers.map((f) => f.address)).toEqual([follower.address])
+    expect(typeof (await publisher.postUpdate('step 1 done')).id).toBe('number')
+    const page = await follower.updates({ wait: 5 })
+    expect(page.updates.map((u) => [u.from, u.kind, u.text])).toEqual([[publisher.address, 'post', 'step 1 done']])
+    const seen: Update[] = []
+    const errors: unknown[] = []
+    const stop = follower.listen(async () => {}, { onUpdate: (u) => { seen.push(u) }, onError: (e) => { errors.push(e) } })
+    await until(() => seen.length === 1, 10_000)
+    await publisher.postUpdate('step 2 done')
+    await publisher.setStatus({ state: 'working', task: 'streaming e2e' })
+    await until(() => seen.length === 3, 10_000)
+    expect(seen.map((u) => [u.kind, u.text])).toEqual([['post', 'step 1 done'], ['post', 'step 2 done'], ['status', 'working: streaming e2e']])
+    expect(errors).toEqual([])
+    await stop()
+    await follower.unfollow(publisher.address!)
+    expect(await follower.following()).toEqual([])
+    await Promise.all([publisher.close(), follower.close()])
   }, 60_000)
 })

@@ -4,6 +4,7 @@ import { NOT_READY, onPrompt, onSession, type Box, type On } from './lib/lifecyc
 import { discardMessages, idsOf } from './lib/discard.ts'
 import { onTurns } from './lib/replies.ts'
 import { sendMessage } from './lib/send.ts'
+import { onStreamTools } from './lib/stream-hooks.ts'
 import type { Options } from './lib/talkie.ts'
 
 const FAILED = { result: 'clawalkietalkie hit an error; /talkie status shows its state.' }
@@ -36,4 +37,5 @@ export const register: Register = (on, rawOptions) => {
   onPrompt(on, box)
   onTurns(on, box)
   onTools(on, box)
+  onStreamTools(on, box)
 }

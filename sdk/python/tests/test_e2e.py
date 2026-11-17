@@ -10,7 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from clawalkietalkie import AsyncClient, ClawalkietalkieError, Client, PlanRequired, async_sign_in, sign_in
+from clawalkietalkie import (
+    AsyncClient,
+    BlockedByPublisher,
+    ClawalkietalkieError,
+    Client,
+    NotStreaming,
+    PlanRequired,
+    async_sign_in,
+    sign_in,
+)
 
 SERVER = os.environ.get("CLAWALKIETALKIE_E2E_SERVER", "")
 LOG = os.environ.get("CLAWALKIETALKIE_E2E_LOG", "")
@@ -102,3 +111,90 @@ async def test_async_end_to_end():
         await asyncio.wait_for(stop(), 2)
         await echo.close()
         await sender.close()
+
+
+# A built-in product, so a Free account may claim it.
+BUILT_IN = "codex"
+
+
+def signed_in_client(prefix: str) -> Client:
+    email = f"{prefix}-{time.time_ns()}@example.com"
+    sign_in.start(email, server=SERVER)
+    return Client(sign_in.verify(email, code_for(email), device="sdk-e2e@test", server=SERVER)["token"], server=SERVER)
+
+
+def test_sync_update_streams_end_to_end():
+    client = signed_in_client("sdk-py-streams")
+    pub, fan = client.agent(client=BUILT_IN), client.agent(client=BUILT_IN)
+    claim_or_skip(pub)
+    fan.claim()
+    with pytest.raises(NotStreaming):
+        fan.follow(pub.address)
+    with pytest.raises(NotStreaming):
+        pub.post_update("too early")
+    assert pub.set_streaming(True) == {"on": True, "includeStatus": False}
+    assert fan.follow(pub.address) == pub.address
+    pub.post_update("half way through the migration")
+    page = fan.updates(wait=5)
+    assert [(u["from"], u["kind"], u["text"]) for u in page["updates"]] == [
+        (pub.address, "post", "half way through the migration")
+    ]
+    assert (fan.following()[0]["to"], pub.followers()["followers"][0]["address"]) == (pub.address, fan.address)
+    got, errors = [], []
+    stop = fan.listen(lambda m: None, on_update=got.append, on_error=lambda e, i: errors.append(e))
+    pub.post_update("done")
+    end = time.monotonic() + 10
+    while not any(u["text"] == "done" for u in got) and time.monotonic() < end:
+        time.sleep(0.05)
+    stop()
+    assert "done" in [u["text"] for u in got] and errors == []
+    fan.unfollow(pub.address)
+    assert fan.following() == []
+    pub.close()
+    fan.close()
+    client.close()
+
+
+def test_sync_remove_and_unblock_a_follower_end_to_end():
+    client = signed_in_client("sdk-py-blocks")
+    pub, fan = client.agent(client=BUILT_IN), client.agent(client=BUILT_IN)
+    claim_or_skip(pub)
+    fan.claim()
+    pub.set_streaming(True)
+    fan.follow(pub.address)
+    pub.remove_follower(fan.address)
+    assert pub.followers()["followers"] == []
+    if "blocked" not in pub.followers():
+        pytest.skip("this relay does not block removed followers yet")
+    with pytest.raises(BlockedByPublisher):
+        fan.follow(pub.address)
+    pub.unblock_follower(fan.address)
+    assert fan.follow(pub.address) == pub.address
+    client.close()
+
+
+async def test_async_update_streams_end_to_end():
+    email = f"sdk-pya-streams-{time.time_ns()}@example.com"
+    await async_sign_in.start(email, server=SERVER)
+    token = (await async_sign_in.verify(email, code_for(email), device="sdk-e2e@test", server=SERVER))["token"]
+    async with AsyncClient(token, server=SERVER) as client:
+        pub, fan = client.agent(client=BUILT_IN), client.agent(client=BUILT_IN)
+        try:
+            await pub.claim()
+        except PlanRequired as error:
+            pytest.skip(f"relay needs a paid plan: {error.hint}")
+        await fan.claim()
+        await pub.set_streaming(True, include_status=True)
+        await fan.follow(pub.address)
+        got = []
+        stop = fan.listen(lambda m: None, on_update=got.append)
+        await pub.post_update("async hello")
+        await pub.set_status("working", "streaming e2e")
+        for _ in range(200):
+            if len(got) >= 2:
+                break
+            await asyncio.sleep(0.05)
+        await asyncio.wait_for(stop(), 2)
+        assert [(u["kind"], u["text"]) for u in got] == [("post", "async hello"), ("status", "working: streaming e2e")]
+        await pub.close()
+        await fan.close()

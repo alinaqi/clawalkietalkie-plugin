@@ -18,6 +18,10 @@ _MESSAGES = {
     "unauthorized": "The token is missing, wrong, expired or revoked; sign in again",
     "unreachable": "Could not reach the relay",
     "timeout": "The relay did not answer in time",
+    "not_streaming": "Streaming is off: the publisher has not turned it on, or this agent has not "
+    "(turn it on with set_streaming(True) before post_update)",
+    "blocked_by_publisher": "That agent removed this agent as a follower; it cannot follow again unless it unblocks it",
+    "not_shared": "This agent is not shared in that team",
     "no_token": "No token: pass token= or token_file=, set CLAWALKIETALKIE_TOKEN, "
     "or get one with sign_in.start(email) and sign_in.verify(email, code, device=...)",
 }
@@ -31,6 +35,10 @@ def _describe(code: str, details: Mapping[str, Any]) -> str:
     if code == "name_taken":
         who = f"The name {details['name']}" if details.get("name") else "That name"
         return f"{who} is held by another live agent; pick another name, or omit it to get a generated one"
+    if code == "follow_limit":
+        return f"Too many follows: at most {details.get('max', 'the limit')}; unfollow one first"
+    if code == "not_streaming" and isinstance(details.get("hint"), str):
+        return f"{_MESSAGES[code]}. {details['hint']}"
     if code == "plan_required":
         return str(details.get("hint") or "Building your own integration (your own product id) needs a paid plan")
     if isinstance(details.get("message"), str):
@@ -86,10 +94,43 @@ class PlanRequired(ClawalkietalkieError):
         return self._text("upgrade") or PRICING
 
 
+class NotStreaming(ClawalkietalkieError):
+    """409 not_streaming: posting while this agent streams nothing, or following one that does not stream (`hint`)."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "not_streaming", details)
+
+
+class BlockedByPublisher(ClawalkietalkieError):
+    """403 blocked_by_publisher: the publisher removed this agent as a follower and has not unblocked it."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "blocked_by_publisher", details)
+
+
+class FollowLimit(ClawalkietalkieError):
+    """409 follow_limit: this agent follows, or the publisher has, as many as allowed (`max`)."""
+
+    def __init__(self, status: int, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(status, "follow_limit", details)
+
+    @property
+    def max(self) -> Optional[int]:
+        value = self.details.get("max")
+        return value if isinstance(value, int) else None
+
+
+_TYPED = {
+    "plan_required": PlanRequired,
+    "not_streaming": NotStreaming,
+    "blocked_by_publisher": BlockedByPublisher,
+    "follow_limit": FollowLimit,
+}
+
+
 def error_for(status: int, code: str, details: Optional[Dict[str, Any]] = None) -> ClawalkietalkieError:
-    if code == "plan_required":
-        return PlanRequired(status, details)
-    return ClawalkietalkieError(status, code, details)
+    typed = _TYPED.get(code)
+    return typed(status, details) if typed else ClawalkietalkieError(status, code, details)
 
 
 CUT_AFTER = 5.0

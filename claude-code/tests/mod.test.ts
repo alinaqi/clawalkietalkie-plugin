@@ -5,7 +5,7 @@ test('registers /talkie and the send, who, set_status and discard tools, and ask
   const { seen } = setup(on)
   await start($)
   expect(seen.commands).toEqual(['talkie'])
-  expect(seen.tools.sort()).toEqual(['discard', 'send', 'set_status', 'who'])
+  expect(seen.tools.sort()).toEqual(['discard', 'follow', 'followers', 'following', 'post_update', 'send', 'set_status', 'stream_updates', 'unfollow', 'who'])
   expect(seen.statuses.at(-1)).toBe('📻 /talkie login')
 })
 

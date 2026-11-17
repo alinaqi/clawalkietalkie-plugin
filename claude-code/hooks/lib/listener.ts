@@ -5,6 +5,7 @@ import { saveFiles } from './files-in.ts'
 import type { EngineInterface } from 'claude-code'
 import { jitter, nextBackoff } from './backoff.ts'
 import { saveCursor } from './cursor.ts'
+import { stopFeed } from './feed.ts'
 import { expectReply, readMessage } from './hops.ts'
 import type { InboxMessage } from './relay.ts'
 import { relayOf, saveAuth, showStatus, type Talkie } from './talkie.ts'
@@ -80,5 +81,6 @@ export function stopListening ($: EngineInterface, t: Talkie): void {
   t.isListening = false
   t.timer?.cancel()
   t.timer = undefined
+  stopFeed($, t)
   showStatus($, t)
 }

@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 from fake_messages import message_route
+from fake_streams import stream_route
 
 
 def ok(body: Any = None, status: int = 200) -> httpx.Response:
@@ -120,7 +121,7 @@ def route(relay, call):
         found = handler(call)
         if found is not None:
             return found
-    for handler in (listing, sessions, files, message_route):
+    for handler in (stream_route, listing, sessions, files, message_route):
         found = handler(relay, call)
         if found is not None:
             return found

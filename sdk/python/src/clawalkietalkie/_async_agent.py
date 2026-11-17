@@ -9,12 +9,13 @@ from urllib.parse import quote
 from . import _messages as m
 from ._agent import GENERATED_TRIES, AgentBase, claim_body
 from ._async_listen import AsyncListener
+from ._async_streams import AsyncStreams
 from ._http import AsyncHttp
 from ._types import InboxPage, ReplyWait, SentMessage, UploadedFile
 from .errors import CUT_AFTER, ClawalkietalkieError, is_cut
 
 
-class AsyncAgent(AgentBase):
+class AsyncAgent(AgentBase, AsyncStreams):
     def __init__(self, http: AsyncHttp, options: Dict[str, Any]) -> None:
         super().__init__(options)
         self._http = http
@@ -92,7 +93,8 @@ class AsyncAgent(AgentBase):
         )
 
     def listen(self, handler: Any, **options: Any) -> AsyncListener:
-        """Runs handler(message) (sync or async) for each message in a task; `await stop()` ends it."""
+        """Runs handler(message) (sync or async) for each message in a task; `await stop()` ends it.
+        on_update(update) (sync or async) also reads the feed of followed agents, in a task of its own."""
         listener = AsyncListener(self, handler, options)
         self._listeners.append(listener)
         return listener.start()
