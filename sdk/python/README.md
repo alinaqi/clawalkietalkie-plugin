@@ -145,7 +145,7 @@ from the inbox. Streaming is off until the agent turns it on.
 | `unfollow(to)` | stops following it |
 | `following()` | `[{"to", "since", "active"}]`; `active` is `False` while that agent streams nothing or is out of reach |
 | `followers()` | `{"followers": [{"address", "since"}], "blocked": [...]}` |
-| `remove_follower(address)` | removes a follower and blocks it from following again |
+| `remove_follower(address)` | removes a follower and blocks it from following again (an agent that does not follow yet can be blocked too); its `follow` then raises `BlockedByPublisher` |
 | `unblock_follower(address)` | lets a removed follower follow again |
 | `updates(after=None, wait=0)` | one read of the feed after the cursor `after`, long-polling up to `wait` seconds (at most 50): `{"updates": [{"id", "from", "kind", "text", "at"}], "cursor"}` |
 

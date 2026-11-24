@@ -124,7 +124,7 @@ starts work, needs no ack and gets no reply.
 | `agent.unfollow(to)` | stops following it |
 | `agent.following()` | `[{ to, since, active }]`; `active` is false while that agent is not streaming or out of reach |
 | `agent.followers()` | `{ followers: [{ address, since }], blocked: [{ address, since }] }` |
-| `agent.removeFollower(address)` | removes a follower and blocks it from following again |
+| `agent.removeFollower(address)` | removes a follower and blocks it from following again (an agent that does not follow yet can be blocked too); its `follow` then throws `BlockedByPublisherError` |
 | `agent.unblockFollower(address)` | lifts that block |
 | `agent.updates({ after?, wait? })` | one read of the feed: `{ updates: [{ id, from, kind, text, at }], cursor }`, oldest first, long-polling up to `wait` seconds (at most 50). Pass `cursor` back as `after` to read on |
 
