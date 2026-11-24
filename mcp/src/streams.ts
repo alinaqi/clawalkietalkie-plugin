@@ -72,8 +72,18 @@ export const changeFollower = async (s: AgentState, change: { address: string, u
   return change.unblock ? unblockedText(addressOf(target), selfOf(s)) : removedText(addressOf(target), selfOf(s))
 }
 
+// The check running for each agent: the next waits for it, so it reads from the cursor the one before saved and an
+// older read never moves the cursor back.
+const checking = new WeakMap<AgentState, Promise<unknown>>()
+
 // The feed since the stored cursor, without waiting; a cursor the relay rejects is dropped and the feed read again.
-export const checkUpdates = async (s: AgentState): Promise<string> => {
+export const checkUpdates = (s: AgentState): Promise<string> => {
+  const next = (checking.get(s) ?? Promise.resolve()).catch(() => undefined).then(() => readUpdates(s))
+  checking.set(s, next)
+  return next
+}
+
+const readUpdates = async (s: AgentState): Promise<string> => {
   if (!s.auth) return SIGN_IN
   const key = cursorKey(s)
   const after = loadUpdatesCursor(s.deps.dir, key)

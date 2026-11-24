@@ -6,9 +6,11 @@ import { createFakeRelay } from '../../claude-code/tests/fake-relay.ts'
 import { createAgent } from '../src/agent.ts'
 import { saveAuth } from '../src/config.ts'
 
-const setup = async (signedIn = true, dir = mkdtempSync(join(tmpdir(), 'cwt-streams-')), relay = createFakeRelay()) => {
+type Fetch = Parameters<typeof createAgent>[0]['fetch']
+
+const setup = async (signedIn = true, dir = mkdtempSync(join(tmpdir(), 'cwt-streams-')), relay = createFakeRelay(), fetch?: Fetch) => {
   if (signedIn) saveAuth(dir, { token: 'tok-1', email: 'a@x.io' })
-  const agent = createAgent({ fetch: async (url, init) => relay.fetch(url, init), dir, serverUrl: 'https://relay.test', cwd: '/work/api' })
+  const agent = createAgent({ fetch: fetch ?? (async (url, init) => relay.fetch(url, init)), dir, serverUrl: 'https://relay.test', cwd: '/work/api' })
   await agent.start('cx')
   const name = String(relay.find('PUT', '/v1/sessions/')[0]?.path.split('/').at(-1) ?? '')
   return { relay, agent, dir, name }
@@ -77,6 +79,31 @@ describe('update streams', () => {
     expect(paths.at(-2)).toMatch(/after=u1/)
     expect(paths.at(-1)).not.toMatch(/after=/)
     expect(await agent.checkUpdates()).toMatch(/one/)
+  })
+
+  it('serializes check_updates, so an older read never moves the cursor back', async () => {
+    const relay = createFakeRelay()
+    const dir = mkdtempSync(join(tmpdir(), 'cwt-streams-'))
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const held = { first: true }
+    const fetch = async (url: string, init?: Parameters<typeof relay.fetch>[1]) => {
+      const reply = relay.fetch(url, init)
+      if (url.includes('/v1/updates?') && held.first) { held.first = false; await gate }
+      return reply
+    }
+    const { agent } = await setup(true, dir, relay, fetch)
+    relay.streams.follow('cc:happy-cat')
+    relay.streams.publish('cc:happy-cat', 'one')
+    const first = agent.checkUpdates()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    relay.streams.publish('cc:happy-cat', 'two')
+    const second = agent.checkUpdates()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    release()
+    expect(await first).toMatch(/>\none\n</)
+    expect(await second).not.toMatch(/>\none\n</)
+    expect(Object.values(JSON.parse(readFileSync(join(dir, 'update-cursors.json'), 'utf8')))).toEqual(['u2'])
   })
 
   it('removes a follower, blocking it, and unblocks it', async () => {
