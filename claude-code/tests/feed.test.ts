@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { SIGNED_IN, setup, start, talkie, typed } from './harness.ts'
+import { SIGNED_IN, setup, start, talkie, tool, typed } from './harness.ts'
 
 type Relay = ReturnType<typeof setup>['relay']
 const feedReads = (relay: Relay) => relay.find('GET', '/v1/updates').map((c) => new URLSearchParams(c.path.split('?')[1]))
@@ -105,6 +105,47 @@ test('/talkie off stops the feed too', async ($, on) => {
   await start($)
   await clock.advance(300)
   await talkie($, 'off')
+  const reads = feedReads(relay).length
+  await clock.advance(60_000)
+  expect(feedReads(relay)).toHaveLength(reads)
+})
+
+test('a feed read still pending when the feed stops and starts again is dropped: it moves no cursor back', async ($, on) => {
+  const { relay, clock, hold } = setup(on, SIGNED_IN)
+  relay.streams.follow('cc:happy-cat')
+  relay.streams.publish('cc:happy-cat', 'one')
+  const release = hold('GET /v1/updates')
+  await start($)
+  await clock.advance(10)
+  await talkie($, 'off')
+  await talkie($, 'on')
+  await clock.advance(10)
+  relay.streams.publish('cc:happy-cat', 'two')
+  await clock.advance(300)
+  release()
+  await clock.advance(300)
+  expect(feedReads(relay).at(-1)?.get('after')).toBe('u2')
+})
+
+test('a follow still pending when /talkie off runs does not start the feed after it', async ($, on) => {
+  const { relay, clock, hold } = setup(on, SIGNED_IN)
+  await start($)
+  const release = hold('PUT /v1/follows')
+  const following = $.tool.call({ tool: tool('follow'), to: 'cc:happy-cat' })
+  await clock.advance(10)
+  await talkie($, 'off')
+  release()
+  await following
+  await clock.advance(60_000)
+  expect(feedReads(relay)).toHaveLength(0)
+})
+
+test('unfollowing the last followed agent stops the feed', async ($, on) => {
+  const { relay, clock } = setup(on, SIGNED_IN)
+  await start($)
+  await talkie($, 'follow cc:happy-cat')
+  await clock.advance(300)
+  await talkie($, 'unfollow cc:happy-cat')
   const reads = feedReads(relay).length
   await clock.advance(60_000)
   expect(feedReads(relay)).toHaveLength(reads)

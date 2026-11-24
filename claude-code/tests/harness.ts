@@ -21,7 +21,14 @@ export const setup = (on: On, store: Record<string, unknown> = {}) => {
   on('session.start', () => ({ cwd: '/work/web' }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.id', () => ({ value: 'sess-1' }))
-  on('http.fetch', ($, e) => ({ value: relay.fetch(e.url, e.init) }))
+  const held: Array<{ key: string, gate: Promise<void> }> = []
+  on('http.fetch', async ($, e) => {
+    const reply = relay.fetch(e.url, e.init)
+    const key = `${e.init?.method ?? 'GET'} ${e.url.replace(/^https?:\/\/[^/]+/, '').split('?')[0]}`
+    const at = held.findIndex((h) => h.key === key)
+    if (at >= 0) await held.splice(at, 1)[0]!.gate
+    return { value: reply }
+  })
   on('command.register', ($, e) => { seen.commands.push(e.name); seen.hints.push(e.argumentHint ?? ''); return { value: { command: e.name } } })
   on('tool.register', ($, e) => { seen.tools.push(e.name); return { value: { tool: `mcp__clawalkietalkie__${e.name}` } } })
   on('prompt.submit', ($, e) => { seen.prompts.push(e.text); seen.contexts.push([...(e.context ?? [])]); return { text: e.text } })
@@ -29,7 +36,13 @@ export const setup = (on: On, store: Record<string, unknown> = {}) => {
   on('ui.toast', ($, e) => { seen.toasts.push(e.text); return { value: undefined } })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
-  return { relay, seen, clock }
+  // Holds the next request to `key` (like 'GET /v1/updates'): answered as of when it was sent, once release() runs.
+  const hold = (key: string): (() => void) => {
+    let release = (): void => {}
+    held.push({ key, gate: new Promise<void>((resolve) => { release = resolve }) })
+    return () => release()
+  }
+  return { relay, seen, clock, hold }
 }
 
 export const start = ($: Engine) => $.session.start({ cwd: '/work/web', surface: 'terminal', isInteractive: true })

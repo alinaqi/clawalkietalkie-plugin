@@ -48,9 +48,9 @@ async function fail ($: EngineInterface, t: Talkie, status: number): Promise<voi
 
 async function tick ($: EngineInterface, t: Talkie): Promise<void> {
   if (!t.feed.on || !t.auth) return
-  const identity = t.identity
+  const { identity, feed: { run } } = t
   const res = await relayOf($, t).updates(identity.name, { instanceId: identity.instanceId, wait: WAIT_SECONDS, after: t.feed.cursor })
-  if (!t.feed.on) return
+  if (!t.feed.on || t.feed.run !== run) return
   if (t.identity !== identity) return schedule($, t, 0)
   if (!res.ok) return fail($, t, res.status)
   t.feed.backoffMs = 0
@@ -69,6 +69,7 @@ export function startFeed ($: EngineInterface, t: Talkie): void {
 
 export function stopFeed ($: EngineInterface, t: Talkie): void {
   t.feed.on = false
+  t.feed.run += 1
   t.feed.timer?.cancel()
   t.feed.timer = undefined
 }
@@ -77,6 +78,12 @@ export function stopFeed ($: EngineInterface, t: Talkie): void {
 export async function startFeedIfFollowing ($: EngineInterface, t: Talkie): Promise<void> {
   const res = await relayOf($, t).follows({ from: t.identity.name, instanceId: t.identity.instanceId })
   if (res.ok && (res.value ?? []).length > 0) startFeed($, t)
+}
+
+// Stops the feed once this session follows no agent any more; a failed check leaves it as it is.
+export async function stopFeedUnlessFollowing ($: EngineInterface, t: Talkie): Promise<void> {
+  const res = await relayOf($, t).follows({ from: t.identity.name, instanceId: t.identity.instanceId })
+  if (res.ok && (res.value ?? []).length === 0) stopFeed($, t)
 }
 
 // The updates read since the last prompt, framed as data, to read beside the next one; the count leaves the status.
