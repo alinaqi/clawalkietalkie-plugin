@@ -1,6 +1,6 @@
 // Credentials and identities on disk, in a folder only the user can read.
 import { randomBytes } from 'node:crypto'
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { generateName } from '../../claude-code/hooks/lib/address.ts'
@@ -14,11 +14,19 @@ export const defaultDir = (): string =>
 const readJson = <T>(path: string): T | undefined =>
   existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as T : undefined
 
+// Written to a private temporary file and renamed over the target, so a reader (another server process sharing
+// this folder) sees the old file or the new one, whole, never one half written.
 const writePrivate = (dir: string, file: string, value: unknown): void => {
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   const path = join(dir, file)
-  writeFileSync(path, JSON.stringify(value, null, 2), { mode: 0o600 })
-  chmodSync(path, 0o600)
+  const temp = `${path}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`
+  try {
+    writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600, flag: 'wx' })
+    chmodSync(temp, 0o600)
+    renameSync(temp, path)
+  } finally {
+    rmSync(temp, { force: true })
+  }
 }
 
 export const loadAuth = (dir: string): Auth | undefined => readJson<Auth>(join(dir, 'auth.json'))
