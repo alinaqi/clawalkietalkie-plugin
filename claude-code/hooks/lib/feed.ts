@@ -80,10 +80,12 @@ export async function startFeedIfFollowing ($: EngineInterface, t: Talkie): Prom
   if (res.ok && (res.value ?? []).length > 0) startFeed($, t)
 }
 
-// Stops the feed once this session follows no agent any more; a failed check leaves it as it is.
+// Stops the feed once this session follows no agent any more; a failed check, or one a follow made meanwhile
+// overtook, leaves it as it is.
 export async function stopFeedUnlessFollowing ($: EngineInterface, t: Talkie): Promise<void> {
+  const follows = t.feed.follows
   const res = await relayOf($, t).follows({ from: t.identity.name, instanceId: t.identity.instanceId })
-  if (res.ok && (res.value ?? []).length === 0) stopFeed($, t)
+  if (res.ok && (res.value ?? []).length === 0 && t.feed.follows === follows) stopFeed($, t)
 }
 
 // The updates read since the last prompt, framed as data, to read beside the next one; the count leaves the status.

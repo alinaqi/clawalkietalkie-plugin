@@ -41,8 +41,9 @@ export interface Talkie {
   // Updates from followed agents read and not yet shown beside a prompt.
   updates: Update[]
   // The updates feed loop: on while this session follows an agent, with its own cursor (kept in $.store) and backoff.
-  // run counts the times it stopped, so a read still pending from a stopped run is dropped.
-  feed: { on: boolean, run: number, cursor?: string, timer?: { cancel: () => void }, backoffMs: number }
+  // run counts the times it stopped, so a read still pending from a stopped run is dropped; follows counts the follows
+  // made, so a check of the follows that a later follow overtook stops nothing.
+  feed: { on: boolean, run: number, follows: number, cursor?: string, timer?: { cancel: () => void }, backoffMs: number }
 }
 
 const AUTH_KEY = 'auth'
@@ -70,7 +71,7 @@ export async function loadTalkie ($: EngineInterface, options: Options, place: {
   const feedCursor = await $.store.get(`updates:${identity.name}:${identity.instanceId}`) as string | undefined
   const fresh = { isListening: false, held: [], context: [], seen: new Set<string>(), backoffMs: 0, hops: new Map<string, number>() }
   const replies = { awaiting: [], turns: new Map<string, InboxMessage>(), replied: new Set<string>() }
-  const streams = { updates: [], feed: { on: false, run: 0, cursor: feedCursor, backoffMs: 0 } }
+  const streams = { updates: [], feed: { on: false, run: 0, follows: 0, cursor: feedCursor, backoffMs: 0 } }
   return { options, sessionId, cwd, root, auth, identity, pendingEmail, cursor, ...fresh, ...replies, ...streams }
 }
 

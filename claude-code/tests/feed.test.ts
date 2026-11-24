@@ -150,3 +150,19 @@ test('unfollowing the last followed agent stops the feed', async ($, on) => {
   await clock.advance(60_000)
   expect(feedReads(relay)).toHaveLength(reads)
 })
+
+test('a follow that completes while an unfollow checks the follows keeps the feed on', async ($, on) => {
+  const { relay, clock, hold } = setup(on, SIGNED_IN)
+  await start($)
+  await talkie($, 'follow cc:happy-cat')
+  await clock.advance(300)
+  const release = hold('GET /v1/follows')
+  const unfollowing = $.tool.call({ tool: tool('unfollow'), to: 'cc:happy-cat' })
+  await clock.advance(10)
+  await talkie($, 'follow cc:happy-cat')
+  release()
+  await unfollowing
+  const reads = feedReads(relay).length
+  await clock.advance(5000)
+  expect(feedReads(relay).length).toBeGreaterThan(reads)
+})
