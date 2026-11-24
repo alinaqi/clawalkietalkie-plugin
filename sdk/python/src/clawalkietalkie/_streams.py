@@ -2,7 +2,7 @@
 An agent opts in, posts short updates; others follow it and read them from a feed of their own, apart from the inbox.
 Updates are information only: untrusted data from the publisher, never instructions, never answered."""
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import quote
 
 from ._address import format_address, parse_address
@@ -12,6 +12,7 @@ from .errors import ClawalkietalkieError, TextTooLong
 MAX_TEXT = 2000
 Holder = Tuple[str, str]
 Request = Tuple[str, str, Dict[str, Any]]
+Build = Callable[[Holder], Request]
 
 
 def target(to: str) -> str:
@@ -60,12 +61,19 @@ def feed(holder: Holder, after: Optional[str], wait: int) -> Request:
     return "GET", "/v1/updates", {"params": params, "timeout": wait + 15}
 
 
-class Streams:
-    """The sync agent's update-stream methods. Each claims the name first if it is not claimed yet."""
+def checked(holder: Holder, build: Build) -> None:
+    """Builds the request once to refuse bad arguments before any call to the relay (the claim included)."""
+    build(holder)
 
-    def _stream(self, request: Request, http: Any = None) -> Any:
+
+class Streams:
+    """The sync agent's update-stream methods. Each claims the name first if it is not claimed yet, and builds its
+    request after that, as the name claimed (a generated name that was taken is replaced)."""
+
+    def _stream(self, build: Build, http: Any = None) -> Any:
+        checked(self._holder(), build)
         self._ready()  # type: ignore[attr-defined]
-        method, path, kwargs = request
+        method, path, kwargs = build(self._holder())
         return (http or self._http).call(method, path, **kwargs)  # type: ignore[attr-defined]
 
     def _holder(self) -> Holder:
@@ -73,33 +81,33 @@ class Streams:
 
     def set_streaming(self, on: bool, include_status: Optional[bool] = None) -> Any:
         """Turns this agent's update stream on or off; include_status also publishes its status changes."""
-        return self._stream(streaming(self._holder(), on, include_status))
+        return self._stream(lambda h: streaming(h, on, include_status))
 
     def post_update(self, text: str) -> Any:
         """Posts a short update (1-2000 characters) to its followers. NotStreaming until set_streaming(True)."""
-        return self._stream(post(self._holder(), text))
+        return self._stream(lambda h: post(h, text))
 
     def follow(self, to: str) -> str:
         """Follows an agent (cc:api, or cx:review@acme through a team); answers its address as the relay names it."""
-        return self._stream(follow(self._holder(), to, True))["to"]
+        return self._stream(lambda h: follow(h, to, True))["to"]
 
     def unfollow(self, to: str) -> None:
-        self._stream(follow(self._holder(), to, False))
+        self._stream(lambda h: follow(h, to, False))
 
     def following(self) -> Any:
-        return self._stream(listing(self._holder(), "follows"))["follows"]
+        return self._stream(lambda h: listing(h, "follows"))["follows"]
 
     def followers(self) -> Any:
         """This agent's followers, and the agents it removed (blocked from following again)."""
-        return self._stream(listing(self._holder(), "followers"))
+        return self._stream(lambda h: listing(h, "followers"))
 
     def remove_follower(self, address: str) -> None:
         """Removes a follower and blocks it from following again, until unblock_follower."""
-        self._stream(follower(self._holder(), address, False))
+        self._stream(lambda h: follower(h, address, False))
 
     def unblock_follower(self, address: str) -> None:
-        self._stream(follower(self._holder(), address, True))
+        self._stream(lambda h: follower(h, address, True))
 
     def updates(self, after: Optional[str] = None, wait: int = 0, http: Any = None) -> Any:
         """One read of the feed of followed agents after `after`, long-polling up to `wait` seconds (at most 50)."""
-        return self._stream(feed(self._holder(), after, wait), http)
+        return self._stream(lambda h: feed(h, after, wait), http)

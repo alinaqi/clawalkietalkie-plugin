@@ -152,3 +152,17 @@ async def test_the_async_agent_streams_follows_and_reads(relay, async_client):
     await fan.follow("pub")
     await fan.unfollow("pub")
     assert await fan.following() == []
+
+
+def test_a_stream_call_goes_out_as_the_name_claimed_in_place_of_a_taken_one(relay, client):
+    relay.fail(r"^/v1/sessions/", 409, body={"error": "name_taken"}, method="PUT")
+    agent = client.agent(client="example")
+    agent.set_streaming(True)
+    assert relay.calls_to("/streaming$")[0].path == f"/v1/sessions/{agent.name}/streaming"
+
+
+async def test_async_a_stream_call_goes_out_as_the_name_claimed_in_place_of_a_taken_one(relay, async_client):
+    relay.fail(r"^/v1/sessions/", 409, body={"error": "name_taken"}, method="PUT")
+    agent = async_client.agent(client="example")
+    await agent.set_streaming(True)
+    assert relay.calls_to("/streaming$")[0].path == f"/v1/sessions/{agent.name}/streaming"
