@@ -121,9 +121,12 @@ const run = async (loop: Loop): Promise<void> => {
   }
 }
 
-const feedOf = (host: Listener, options: ListenOptions, signal: AbortSignal): Promise<void> => {
+// Either loop ends early only on a fatal error; `control` then stops the other with it. Without onUpdate there is no
+// feed loop, and the inbox loop runs alone as before.
+const feedOf = (host: Listener, options: ListenOptions, control: AbortController): Promise<void> => {
   if (!options.onUpdate || !host.updates) return Promise.resolve()
-  return runUpdates({ ready: host.ready, read: host.updates }, options.onUpdate, { ...options, signal })
+  return runUpdates({ ready: host.ready, read: host.updates }, options.onUpdate, { ...options, signal: control.signal })
+    .finally(() => control.abort())
 }
 
 // Starts the loop (and the updates loop with onUpdate); the answer stops them and resolves once the handlers running
@@ -132,6 +135,7 @@ export const createLoop = (host: Listener, handler: Handler, options: ListenOpti
   const control = new AbortController()
   options.signal?.addEventListener('abort', () => control.abort(), { once: true })
   const inbox = run({ host, handler, options, signal: control.signal, handled: new Set(), unacked: [], backoffMs: 0 })
-  const done = Promise.all([inbox, feedOf(host, options, control.signal)])
+    .finally(() => control.abort())
+  const done = Promise.all([inbox, feedOf(host, options, control)])
   return async () => { control.abort(); await done }
 }

@@ -88,9 +88,16 @@ describe('listen with onUpdate', () => {
     const stop = follower.listen(async () => {}, { ...FAST, onUpdate: (u) => { seen.push(u.id) } })
     await publisher.postUpdate('one')
     await until(() => seen.length === 1)
+    const before = feedPolls(relay).length
     relay.fail({ path: /^\/v1\/updates$/, method: 'GET', status: 400, body: { error: code } })
     await publisher.postUpdate('two')
-    await until(() => seen.length === 2)
+    // Recovered: a read after the refused one went out without a cursor, and the one after it has a cursor again.
+    const recovered = () => {
+      const later = feedPolls(relay).slice(before + 1)
+      const reset = later.findIndex((c) => c.query.get('after') === null)
+      return relay.state.failures.length === 0 && reset >= 0 && later.length > reset + 1
+    }
+    await until(() => recovered() && seen.length === 2)
     await stop()
     expect(seen).toEqual([1, 2])
   })
@@ -115,5 +122,47 @@ describe('listen with onUpdate', () => {
     await stop()
     expect(infos[0]!.fatal).toBe(true)
     expect(feedPolls(relay)).toHaveLength(1)
+  })
+
+  it('starts no further onUpdate once stop() was called, even for the rest of the page', async () => {
+    const { publisher, follower } = await following()
+    await publisher.postUpdate('one')
+    await publisher.postUpdate('two')
+    const seen: string[] = []
+    let release = () => {}
+    const blocked = new Promise<void>((resolve) => { release = resolve })
+    const stop = follower.listen(async () => {}, { ...FAST, onUpdate: async (u) => { seen.push(u.text); if (u.text === 'one') await blocked } })
+    await until(() => seen.length === 1)
+    const stopping = stop()
+    release()
+    await stopping
+    expect(seen).toEqual(['one'])
+  })
+
+  it('a fatal feed error stops the inbox loop too', async () => {
+    const { relay, follower } = await following()
+    relay.fail({ path: /^\/v1\/updates$/, method: 'GET', status: 401, body: { error: 'unauthorized' } })
+    const messages: string[] = []
+    const infos: Array<{ fatal: boolean }> = []
+    const stop = follower.listen(async (m) => { messages.push(m.id) }, { ...FAST, onUpdate: () => {}, onError: (_e, info) => { infos.push(info) } })
+    await until(() => infos.length === 1)
+    relay.deliver('fan', { id: 'm1', from: 'ex:pub', text: 'hi' })
+    await new Promise((r) => setTimeout(r, 50))
+    await stop()
+    expect(messages).toEqual([])
+  })
+
+  it('a fatal inbox error stops the feed loop too', async () => {
+    const { relay, publisher, follower } = await following()
+    relay.fail({ path: /^\/v1\/inbox\/fan$/, method: 'GET', status: 401, body: { error: 'unauthorized' } })
+    const seen: string[] = []
+    const infos: Array<{ fatal: boolean }> = []
+    const stop = follower.listen(async () => {}, { ...FAST, onUpdate: (u) => { seen.push(u.text) }, onError: (_e, info) => { infos.push(info) } })
+    await until(() => infos.length === 1)
+    await publisher.postUpdate('after the end')
+    await new Promise((r) => setTimeout(r, 50))
+    await stop()
+    expect(infos[0]!.fatal).toBe(true)
+    expect(seen).toEqual([])
   })
 })

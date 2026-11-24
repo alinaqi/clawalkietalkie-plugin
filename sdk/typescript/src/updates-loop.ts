@@ -31,6 +31,8 @@ const report = (feed: Feed, error: unknown, delayMs: number): void =>
 
 const hand = async (feed: Feed, page: UpdatesPage): Promise<void> => {
   for (const update of page.updates) {
+    // Stopped while an earlier update was handled: start no further onUpdate.
+    if (feed.signal.aborted) return
     if (feed.handed.has(update.id)) continue
     feed.handed.add(update.id)
     if (feed.handed.size > REMEMBER) feed.handed.delete(feed.handed.values().next().value as number)
