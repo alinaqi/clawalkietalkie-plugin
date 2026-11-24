@@ -70,3 +70,27 @@ async def test_async_no_further_update_is_handed_once_stop_was_called(relay, asy
     release.set()
     await stopping
     assert seen == ["one"]
+
+
+def test_stop_from_on_update_starts_no_further_message_handler_in_the_page(relay, client):
+    _, fan = setup(relay, client)
+    relay.deliver("fan", id="m1", **{"from": "cc:pub"}, text="one")
+    relay.deliver("fan", id="m2", **{"from": "cc:pub"}, text="two")
+    handled, held, started, stopped = [], [], threading.Event(), threading.Event()
+
+    def handler(message):
+        handled.append(message.id)
+        if message.id == "m1":
+            stopped.wait(2)
+
+    def on_update(update):
+        until(lambda: handled == ["m1"])
+        started.wait(2)
+        held[0].stop()
+        stopped.set()
+
+    held.append(fan.listen(handler, on_update=on_update, **FAST))
+    started.set()
+    publish(relay, "pub", ["stop now"])
+    held[0].join(2)
+    assert handled == ["m1"]

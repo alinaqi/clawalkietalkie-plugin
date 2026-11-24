@@ -94,11 +94,20 @@ class Listener:
         except Exception as error:
             return None if self._state.poll_failed(error, time.monotonic() - started) else (error, None)
         with self._busy:
+            return self._handle_page(page)
+
+    def _handle_page(self, page: Dict[str, Any]) -> Optional[Failure]:
+        """Hands over each message; once stop() was called (from on_update, say) it starts no further handler and
+        acks only those handled, so the rest come again to the next listener."""
+        for raw in page["messages"]:
             if self._stopping.is_set():
-                return None
-            failed = next((f for f in map(self._handle, page["messages"]) if f), None)
-            self._state.page_done(page.get("cursor"), failed is not None)
-            return failed or self._flush()
+                return self._flush()
+            failed = self._handle(raw)
+            if failed:
+                self._state.page_done(None, True)
+                return failed
+        self._state.page_done(page.get("cursor"), False)
+        return self._flush()
 
     def _pause(self, failure: Failure) -> bool:
         """Reports the failure and waits out the backoff; False when the loop should end."""
