@@ -8,7 +8,12 @@ import { createLoop, type Handler, type ListenOptions } from './listen.ts'
 import { incoming } from './message.ts'
 import { messageStatus, sendMessage, waitForReply, type WaitOptions } from './messaging.ts'
 import { checkStatus } from './status.ts'
-import type { AgentStatus, InboxPage, MessageStatusView, ReplyWait, SendOptions, SentMessage, UploadedFile } from './types.ts'
+import * as streams from './streams.ts'
+import type { StreamingOptions, UpdatesQuery } from './streams.ts'
+import type {
+  AgentStatus, Follow, Followers, InboxPage, MessageStatusView, PostedUpdate, ReplyWait, SendOptions, SentMessage, StreamingSetting,
+  UpdatesPage, UploadedFile
+} from './types.ts'
 
 // client: your product id ([a-z0-9][a-z0-9-]{1,31}); the relay assigns its prefix. name: generated when omitted.
 // instanceId: keep it across restarts to take the name back at once (another instance holds it for 90 s otherwise).
@@ -92,13 +97,15 @@ export class Agent {
     await request(this.#wire, { method: 'POST', path: `/v1/inbox/${enc(name)}/${what}`, json: { instanceId, ids } })
   }
 
-  // Calls `handler` for every message, one at a time; the answer stops listening.
+  // Calls `handler` for every message, one at a time, and `options.onUpdate` for every update of the agents it
+  // follows (untrusted data, information only); the answer stops listening.
   listen (handler: Handler, options: ListenOptions = {}): () => Promise<void> {
     const stop = createLoop({
       ready: () => this.#ready(),
       poll: (q) => this.inbox(q),
       ack: (ids) => this.ack(ids),
-      wrap: (message, onDiscard) => incoming(this, message, onDiscard)
+      wrap: (message, onDiscard) => incoming(this, message, onDiscard),
+      updates: (q) => this.updates(q)
     }, handler, options)
     const tracked = async (): Promise<void> => { this.#stops.delete(tracked); await stop() }
     this.#stops.add(tracked)
@@ -110,6 +117,27 @@ export class Agent {
     const { name, instanceId } = await this.#ready()
     await request(this.#wire, { method: 'PUT', path: `/v1/sessions/${enc(name)}/status`, json: { instanceId, ...body } })
   }
+
+  // Update streams: turn streaming on to post updates; follow streaming agents to read theirs.
+  async setStreaming (options: StreamingOptions): Promise<StreamingSetting> { return streams.setStreaming(this.#wire, await this.#ready(), options) }
+
+  async postUpdate (text: string): Promise<PostedUpdate> { return streams.postUpdate(this.#wire, await this.#ready(), text) }
+
+  // One read of the feed: updates of followed agents after `after` (long-polling up to `wait` seconds, at most 50).
+  async updates (query: UpdatesQuery = {}): Promise<UpdatesPage> { return streams.readUpdates(this.#wire, await this.#ready(), query) }
+
+  async follow (to: string): Promise<{ to: string }> { return streams.follow(this.#wire, await this.#ready(), to) }
+
+  async unfollow (to: string): Promise<void> { return streams.unfollow(this.#wire, await this.#ready(), to) }
+
+  async following (): Promise<Follow[]> { return streams.following(this.#wire, await this.#ready()) }
+
+  async followers (): Promise<Followers> { return streams.followers(this.#wire, await this.#ready()) }
+
+  // Removes a follower and blocks it from following again, until unblockFollower.
+  async removeFollower (address: string): Promise<void> { return streams.dropFollower(this.#wire, await this.#ready(), { follower: address, block: true }) }
+
+  async unblockFollower (address: string): Promise<void> { return streams.dropFollower(this.#wire, await this.#ready(), { follower: address, block: false }) }
 
   async uploadFile (source: FileSource, name?: string): Promise<UploadedFile> { return upload(this.#wire, await this.#ready(), { source, name }) }
 

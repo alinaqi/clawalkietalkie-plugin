@@ -9,8 +9,30 @@ from ._client import Client
 from ._incoming import AsyncIncomingMessage, IncomingMessage
 from ._listen import Listener
 from ._sign_in import async_sign_in, sign_in
-from ._types import InboxPage, Reply, ReplyWait, SentMessage, UploadedFile
-from .errors import ClawalkietalkieError, PlanRequired
+from ._types import (
+    Follow,
+    Follower,
+    Followers,
+    InboxPage,
+    PostedUpdate,
+    Reply,
+    ReplyWait,
+    SentMessage,
+    StreamingSetting,
+    Update,
+    UpdatesPage,
+    UploadedFile,
+)
+from .errors import (
+    BlockedByPublisher,
+    ClawalkietalkieError,
+    FollowerLimit,
+    FollowLimit,
+    InvalidCursor,
+    NotStreaming,
+    PlanRequired,
+    TextTooLong,
+)
 
 create_client = Client
 
@@ -23,15 +45,28 @@ __all__ = [
     "AsyncClient",
     "AsyncIncomingMessage",
     "AsyncListener",
+    "BlockedByPublisher",
     "ClawalkietalkieError",
     "Client",
+    "Follow",
+    "FollowLimit",
+    "Follower",
+    "FollowerLimit",
+    "Followers",
     "InboxPage",
     "IncomingMessage",
+    "InvalidCursor",
     "Listener",
+    "NotStreaming",
     "PlanRequired",
+    "PostedUpdate",
     "Reply",
     "ReplyWait",
     "SentMessage",
+    "StreamingSetting",
+    "TextTooLong",
+    "Update",
+    "UpdatesPage",
     "UploadedFile",
     "async_sign_in",
     "create_client",

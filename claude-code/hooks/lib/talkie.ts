@@ -4,7 +4,8 @@
 import type { EngineInterface } from 'claude-code'
 import { formatAddress, generateName } from './address.ts'
 import { cursorKey } from './cursor.ts'
-import { createRelay, type InboxMessage, type Relay } from './relay.ts'
+import { createRelay, type InboxMessage, type Relay, type Update } from './relay.ts'
+import { countText } from './updates-frame.ts'
 
 export interface Auth { token: string, email: string }
 export interface Identity { name: string, instanceId: string }
@@ -37,6 +38,12 @@ export interface Talkie {
   turns: Map<string, InboxMessage>
   // Requests already answered with reply_to, by id, so each gets one reply.
   replied: Set<string>
+  // Updates from followed agents read and not yet shown beside a prompt.
+  updates: Update[]
+  // The updates feed loop: on while this session follows an agent, with its own cursor (kept in $.store) and backoff.
+  // run counts the times it stopped, so a read still pending from a stopped run is dropped; follows counts the follows
+  // made, so a check of the follows that a later follow overtook stops nothing.
+  feed: { on: boolean, run: number, follows: number, cursor?: string, timer?: { cancel: () => void }, backoffMs: number }
 }
 
 const AUTH_KEY = 'auth'
@@ -61,9 +68,11 @@ export async function loadTalkie ($: EngineInterface, options: Options, place: {
   const auth = await $.store.get(AUTH_KEY) as Auth | undefined
   const pendingEmail = await $.store.get(PENDING_KEY) as string | undefined
   const cursor = await $.store.get(cursorKey(identity)) as string | undefined
+  const feedCursor = await $.store.get(`updates:${identity.name}:${identity.instanceId}`) as string | undefined
   const fresh = { isListening: false, held: [], context: [], seen: new Set<string>(), backoffMs: 0, hops: new Map<string, number>() }
   const replies = { awaiting: [], turns: new Map<string, InboxMessage>(), replied: new Set<string>() }
-  return { options, sessionId, cwd, root, auth, identity, pendingEmail, cursor, ...fresh, ...replies }
+  const streams = { updates: [], feed: { on: false, run: 0, follows: 0, cursor: feedCursor, backoffMs: 0 } }
+  return { options, sessionId, cwd, root, auth, identity, pendingEmail, cursor, ...fresh, ...replies, ...streams }
 }
 
 export async function saveAuth ($: EngineInterface, t: Talkie, auth: Auth | undefined): Promise<void> {
@@ -82,6 +91,7 @@ export async function savePending ($: EngineInterface, t: Talkie, email: string 
 export async function renameTo ($: EngineInterface, t: Talkie, name: string): Promise<void> {
   t.identity = { ...t.identity, name }
   t.cursor = undefined
+  t.feed.cursor = undefined
   await $.store.set(identityKey(t.sessionId), t.identity)
 }
 
@@ -94,5 +104,6 @@ export function relayOf ($: EngineInterface, t: Talkie, headers?: Record<string,
 export function showStatus ($: EngineInterface, t: Talkie): void {
   const address = formatAddress(t.identity.name)
   const text = !t.auth ? '📻 /talkie login' : t.isListening ? `📻 ${address}` : `📻 ${address} (off)`
-  void $.ui.status(text)
+  const unshown = t.auth && t.updates.length > 0 ? ` · 📻 ${countText(t.updates.length)}` : ''
+  void $.ui.status(`${text}${unshown}`)
 }

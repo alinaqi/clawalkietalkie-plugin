@@ -7,6 +7,7 @@ import random
 import time
 from typing import Any, Callable, Dict, Optional, Tuple
 
+from ._async_updates_loop import AsyncUpdatesLoop
 from ._incoming import AsyncIncomingMessage
 from ._loop import LoopState
 
@@ -22,22 +23,31 @@ class AsyncListener:
         self._state = LoopState(options, options.get("random") or random.random)
         self._stopping = asyncio.Event()
         self._task: Optional[asyncio.Task] = None
+        on_update = options.get("on_update")
+        updates_options = {**options, "random": options.get("random") or random.random}
+        self._updates = AsyncUpdatesLoop(agent, on_update, updates_options) if on_update else None
 
     def start(self) -> "AsyncListener":
         self._task = asyncio.ensure_future(self._run())
+        if self._updates is not None:
+            self._updates.start(self._stopping, self._until_stopped)
         return self
+
+    def _tasks(self) -> list:
+        return [t for t in (self._task, self._updates and self._updates.task) if t is not None]
 
     @property
     def running(self) -> bool:
-        return self._task is not None and not self._task.done()
+        return any(not t.done() for t in self._tasks())
 
     async def __call__(self) -> None:
         await self.stop()
 
     async def stop(self) -> None:
+        """Ends the inbox loop and the updates loop, and resolves once both have ended."""
         self._stopping.set()
-        if self._task is not None:
-            await self._task
+        for task in self._tasks():
+            await task
 
     async def _until_stopped(self, awaitable: Any) -> Any:
         """Awaits it unless stop() comes first; None when stopped."""

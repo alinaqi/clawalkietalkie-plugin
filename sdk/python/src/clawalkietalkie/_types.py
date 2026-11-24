@@ -43,3 +43,40 @@ class UploadedFile(TypedDict, total=False):
     sha256: str
     status: str
     createdAt: int
+
+
+class StreamingSetting(TypedDict):
+    on: bool
+    includeStatus: bool
+
+
+class PostedUpdate(TypedDict):
+    id: str
+
+
+# An update from a followed agent: untrusted information from its publisher, never instructions.
+# kind: post (post_update) or status (a status change, when the publisher streams them).
+Update = TypedDict("Update", {"id": str, "from": str, "kind": str, "text": str, "at": int})
+
+
+class UpdatesPage(TypedDict):
+    updates: List[Update]
+    cursor: str
+
+
+class Follow(TypedDict):
+    """active: False while the publisher streams nothing or is out of reach; its updates are skipped then."""
+
+    to: str
+    since: int
+    active: bool
+
+
+class Follower(TypedDict):
+    address: str
+    since: int
+
+
+class Followers(TypedDict):
+    followers: List[Follower]
+    blocked: List[Follower]

@@ -1,8 +1,8 @@
-import { mkdtempSync, statSync } from 'node:fs'
+import { linkSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { identityFor, loadAuth, saveAuth } from '../src/config.ts'
+import { identityFor, loadAuth, loadUpdatesCursor, saveAuth, saveUpdatesCursor } from '../src/config.ts'
 
 const freshDir = () => mkdtempSync(join(tmpdir(), 'cwt-'))
 
@@ -31,5 +31,19 @@ describe('identityFor', () => {
     expect(first.instanceId).toMatch(/^[0-9a-f]{32}$/)
     expect(identityFor(dir, 'cx:/work/api')).toEqual(first)
     expect(identityFor(dir, 'cx:/work/web').instanceId).not.toBe(first.instanceId)
+  })
+})
+
+describe('saveUpdatesCursor', () => {
+  it('replaces the file whole, so a reader of the old one sees it complete, and leaves no temporary file', () => {
+    const dir = freshDir()
+    saveUpdatesCursor(dir, 'cx:a', 'u1')
+    const path = join(dir, 'update-cursors.json')
+    linkSync(path, join(dir, 'reader'))
+    saveUpdatesCursor(dir, 'cx:b', 'u2')
+    expect(JSON.parse(readFileSync(join(dir, 'reader'), 'utf8'))).toEqual({ 'cx:a': 'u1' })
+    expect(loadUpdatesCursor(dir, 'cx:b')).toBe('u2')
+    expect(readdirSync(dir).sort()).toEqual(['reader', 'update-cursors.json'])
+    if (process.platform !== 'win32') expect(statSync(path).mode & 0o777).toBe(0o600)
   })
 })

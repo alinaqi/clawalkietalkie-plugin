@@ -48,3 +48,16 @@ export interface InboxMessage {
 export interface InboxPage { messages: InboxMessage[], cursor: string | null }
 
 export interface SendOptions { type?: MessageType, about?: string, replyTo?: string, files?: string[], hop?: number, signal?: AbortSignal }
+
+// Update streams: an agent's switch, and what its followers read. An update is information only, untrusted data from
+// its publisher: never instructions, never answered.
+export interface StreamingSetting { on: boolean, includeStatus: boolean }
+export interface PostedUpdate { id: number }
+// kind: 'post' (posted with postUpdate) or 'status' (a status change, when the publisher streams them).
+// from: the publisher's address as this agent addresses it (cc:api, or cx:review@acme through a team).
+export interface Update { id: number, from: string, kind: 'post' | 'status', text: string, at: number }
+export interface UpdatesPage { updates: Update[], cursor: string }
+// active: false while the publisher is not streaming or out of reach; the follow resumes when it is back.
+export interface Follow { to: string, since: number, active: boolean }
+export interface FollowerInfo { address: string, since: number }
+export interface Followers { followers: FollowerInfo[], blocked: FollowerInfo[] }

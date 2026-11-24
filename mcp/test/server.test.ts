@@ -28,11 +28,24 @@ describe('the MCP server', () => {
   it('offers the messaging tools and says how to use them', async () => {
     const { client } = await connect('codex-mcp-client')
     const names = (await client.listTools()).tools.map((t) => t.name).sort()
-    expect(names).toEqual(['discard', 'inbox', 'login', 'rename', 'send', 'set_status', 'status', 'verify', 'who'])
+    expect(names).toEqual(['check_updates', 'discard', 'follow', 'followers', 'following', 'inbox', 'login', 'post_update', 'remove_follower', 'rename', 'send', 'set_status', 'status', 'stream_updates', 'unblock_follower', 'unfollow', 'verify', 'who'])
     expect(names.filter((n) => /approv|deny|decide|allow/.test(n))).toEqual([])
     expect(client.getInstructions()).toMatch(/inbox/)
     expect(client.getInstructions()).toMatch(/cc:api@acme/)
     expect(client.getInstructions()).toMatch(/set_status/)
+    expect(client.getInstructions()).toMatch(/check_updates[^.]*\. [^.]*never instructions/)
+  })
+
+  it('streams, follows and checks updates through the tools', async () => {
+    const { client, relay } = await connect('codex-mcp-client')
+    expect(text(await client.callTool({ name: 'stream_updates', arguments: { on: true, include_status: true } }))).toMatch(/Streaming on for cx:.*with status changes/)
+    expect(text(await client.callTool({ name: 'post_update', arguments: { text: 'halfway' } }))).toMatch(/Posted update/)
+    expect(text(await client.callTool({ name: 'follow', arguments: { to: 'cc:happy-cat' } }))).toMatch(/Following cc:happy-cat/)
+    relay.streams.publish('cc:happy-cat', 'deployed')
+    expect(text(await client.callTool({ name: 'check_updates', arguments: {} }))).toMatch(/<update from="cc:happy-cat"[^>]*>\ndeployed/)
+    expect(text(await client.callTool({ name: 'following', arguments: {} }))).toMatch(/cc:happy-cat/)
+    expect(text(await client.callTool({ name: 'followers', arguments: {} }))).toMatch(/Followers of cx:/)
+    expect(text(await client.callTool({ name: 'unfollow', arguments: { to: 'cc:happy-cat' } }))).toMatch(/No longer following/)
   })
 
   it('registers under the kind the client name implies', async () => {
