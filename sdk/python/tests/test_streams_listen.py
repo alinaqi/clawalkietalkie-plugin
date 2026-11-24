@@ -19,6 +19,13 @@ def feed_polls(relay):
     return relay.calls_to("^/v1/updates$", "GET")
 
 
+def recovered(relay, before):
+    """After the refused read: one read without a cursor went out, and the next one has a cursor again."""
+    later = feed_polls(relay)[before + 1 :]
+    reset = next((i for i, p in enumerate(later) if "after" not in p.query), None)
+    return not relay.failures and reset is not None and len(later) > reset + 1
+
+
 def test_listen_runs_the_updates_feed_with_its_own_cursor(relay, client):
     _, fan = setup(relay, client)
     updates, messages = [], []
@@ -29,6 +36,7 @@ def test_listen_runs_the_updates_feed_with_its_own_cursor(relay, client):
     until(lambda: updates == ["one", "two"])
     relay.deliver("fan", id="m1", **{"from": "cc:pub"}, text="hi")
     until(lambda: messages == ["hi"])
+    until(lambda: any(p.query.get("after") == "u2" for p in feed_polls(relay)))
     stop()
     polls = feed_polls(relay)
     assert "after" not in polls[0].query and polls[0].query["wait"] == "25"
@@ -82,10 +90,12 @@ def test_a_refused_feed_cursor_reads_from_the_start_and_401_is_fatal(relay, clie
     stop = fan.listen(lambda m: None, on_update=lambda u: seen.append(u["id"]), **FAST)
     publish(relay, "pub", ["a"])
     until(lambda: seen == ["u1"])
+    before = len(feed_polls(relay))
     relay.fail("^/v1/updates$", 400, body={"error": code}, method="GET")
     publish(relay, "pub", ["b"])
-    until(lambda: "u2" in seen)
+    until(lambda: recovered(relay, before) and "u2" in seen)
     stop()
+    assert seen == ["u1", "u2"]
     relay.fail("^/v1/updates$", 401, body={"error": "unauthorized"}, method="GET")
     listener = fan.listen(lambda m: None, on_update=lambda u: None, on_error=lambda e, i: infos.append(i), **FAST)
     until(lambda: infos)
@@ -123,3 +133,21 @@ async def test_async_listen_without_on_update_never_reads_the_feed(relay, async_
     await until_async(lambda: relay.calls_to("^/v1/inbox/fan$"))
     await stop()
     assert relay.calls_to("^/v1/updates$") == []
+
+
+async def test_async_a_refused_cursor_hands_no_update_twice(relay, async_client):
+    pub = async_client.agent(name="pub", client="example", kind="cc", instance_id="ip")
+    fan = async_client.agent(name="fan", client="example", kind="cc", instance_id="if")
+    await fan.claim()
+    await pub.set_streaming(True)
+    await fan.follow("pub")
+    seen = []
+    stop = fan.listen(lambda m: None, on_update=lambda u: seen.append(u["id"]), **FAST)
+    await pub.post_update("a")
+    await until_async(lambda: seen == ["u1"])
+    before = len(feed_polls(relay))
+    relay.fail("^/v1/updates$", 400, body={"error": "invalid_cursor"}, method="GET")
+    await pub.post_update("b")
+    await until_async(lambda: recovered(relay, before) and "u2" in seen)
+    await stop()
+    assert seen == ["u1", "u2"]

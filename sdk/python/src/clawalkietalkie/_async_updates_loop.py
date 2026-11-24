@@ -6,7 +6,7 @@ import time
 from typing import Any, Callable, Dict, Optional
 
 from ._loop import LoopState
-from ._updates_loop import Failure, report
+from ._updates_loop import Failure, Handed, report
 
 
 class AsyncUpdatesLoop:
@@ -16,6 +16,7 @@ class AsyncUpdatesLoop:
         self._wait = int(options.get("wait_seconds", 25))
         self._on_error = options.get("on_error")
         self._state = LoopState(options, options["random"])
+        self._handed = Handed()
         self._until_stopped: Any = None
         self._stopping: Any = None
         self.task: Optional[asyncio.Task] = None
@@ -43,7 +44,10 @@ class AsyncUpdatesLoop:
         if page is None:
             return None
         for update in page["updates"]:
-            await self._hand(update)
+            if self._stopping.is_set():
+                return None
+            if self._handed.fresh(update["id"]):
+                await self._hand(update)
         self._state.cursor = page.get("cursor") or self._state.cursor
         return None
 

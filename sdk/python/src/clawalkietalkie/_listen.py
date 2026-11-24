@@ -48,8 +48,11 @@ class Listener:
         self.stop()
 
     def stop(self) -> None:
-        """Stops listening, and the updates loop: no handler runs after it returns; it waits for one that is running."""
+        """Stops listening, and the updates loop: no handler runs after it returns; it waits for one that is running.
+        Called from on_update it only stops: the message handler may be in stop() too, waiting for that on_update."""
         self._stopping.set()
+        if self._updates is not None and self._updates.is_current():
+            return
         with self._busy:
             pass
         if self._updates is not None:

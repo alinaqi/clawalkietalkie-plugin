@@ -1,14 +1,33 @@
 """The updates feed loop beside a sync listener, in a thread of its own: long-poll the feed of followed agents from
 its own cursor and hand each update to on_update. An update is information, never acked or redelivered: one whose
-handler raised is reported to on_error (info["update"]) and the loop reads on. Errors back off as the inbox's do."""
+handler raised is reported to on_error (info["update"]) and the loop reads on. Errors back off as the inbox's do.
+A cursor the relay refuses reads the feed from the start again; the ids already handed over are skipped, so no update
+is handed twice. No further update is handed once stop() was called."""
 
 import threading
 import time
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from ._loop import LoopState
+from ._loop import REMEMBER, LoopState
 
 Failure = Tuple[BaseException, Optional[Dict[str, Any]]]
+
+
+class Handed:
+    """The ids of the last updates handed over (at most REMEMBER), kept across cursor resets."""
+
+    def __init__(self) -> None:
+        self._ids: OrderedDict[Any, None] = OrderedDict()
+
+    def fresh(self, update_id: Any) -> bool:
+        """True the first time; it is then remembered."""
+        if update_id in self._ids:
+            return False
+        self._ids[update_id] = None
+        if len(self._ids) > REMEMBER:
+            self._ids.popitem(last=False)
+        return True
 
 
 def report(state: LoopState, on_error: Any, failure: Failure) -> Dict[str, Any]:
@@ -27,6 +46,7 @@ class UpdatesLoop:
         self._wait = int(options.get("wait_seconds", 25))
         self._on_error = options.get("on_error")
         self._state = LoopState(options, options["random"])
+        self._handed = Handed()
         self._busy = threading.RLock()
         self._thread = threading.Thread(target=self._run, name="clawalkietalkie-updates", daemon=True)
         self._stopping: Any = None
@@ -39,6 +59,10 @@ class UpdatesLoop:
 
     def is_alive(self) -> bool:
         return self._thread.is_alive()
+
+    def is_current(self) -> bool:
+        """True when called on this loop's thread (from on_update)."""
+        return threading.current_thread() is self._thread
 
     def settle(self) -> None:
         """Waits for an on_update that is running."""
@@ -61,12 +85,16 @@ class UpdatesLoop:
         except Exception as error:
             return None if self._state.poll_failed(error, time.monotonic() - started) else (error, None)
         with self._busy:
-            if self._stopping.is_set():
-                return None
-            for update in page["updates"]:
-                self._hand(update)
-            self._state.cursor = page.get("cursor") or self._state.cursor
+            self._hand_page(page)
         return None
+
+    def _hand_page(self, page: Dict[str, Any]) -> None:
+        for update in page["updates"]:
+            if self._stopping.is_set():
+                return
+            if self._handed.fresh(update["id"]):
+                self._hand(update)
+        self._state.cursor = page.get("cursor") or self._state.cursor
 
     def _run(self) -> None:
         try:
